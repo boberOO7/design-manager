@@ -9,10 +9,24 @@ const categories: ContractorCategory[] = [
 ];
 
 function contractor(overrides: Partial<Contractor>): Contractor {
-  return { id: "one", category: categories[0], subcategory: null, name: "Acme", website_url: null, phone: null, description: null, created_by: "user", created_at: "2026-08-18", updated_at: "2026-08-18", ...overrides };
+  return { id: "one", category: categories[0], subcategory: null, name: "Acme", cooperation_status: "verified", is_recommended: false, website_url: null, phone: null, description: null, created_by: "user", created_at: "2026-08-18", updated_at: "2026-08-18", ...overrides };
 }
 
 describe("contractor subcategory presentation", () => {
+  it("combines status and recommendation with existing search and classification filters", () => {
+    const items = [
+      contractor({ id: "recommended", is_recommended: true, subcategory: categories[0].subcategories[0] }),
+      contractor({ id: "ordinary" }),
+      contractor({ id: "future", cooperation_status: "prospective" }),
+    ];
+    const filters = { categoryId: "", subcategoryId: "", query: "" };
+    expect(filterContractors(items, filters)).toHaveLength(3);
+    expect(filterContractors(items, { ...filters, status: "prospective" }).map(item => item.id)).toEqual(["future"]);
+    expect(filterContractors(items, { ...filters, status: "verified" }).map(item => item.id)).toEqual(["recommended", "ordinary"]);
+    expect(filterContractors(items, { ...filters, status: "prospective", recommendedOnly: true })).toEqual([]);
+    expect(filterContractors(items, { ...filters, query: "ACME", categoryId: "electrical", subcategoryId: "lighting", recommendedOnly: true }).map(item => item.id)).toEqual(["recommended"]);
+    expect(filterContractors(items, { ...filters, query: "other", recommendedOnly: true })).toEqual([]);
+  });
   it("exposes a category's subcategories or the studio-wide options, resetting only incompatible filters", () => {
     expect(getContractorSubcategories(categories, "electrical").map((item) => item.id)).toEqual(["lighting", "low-voltage"]);
     expect(getContractorSubcategories(categories, "").map((item) => item.id)).toEqual(["heating", "lighting", "low-voltage"]);
@@ -55,7 +69,7 @@ describe("contractor subcategory presentation", () => {
     const directoryPath = new URL("../components/contractors/contractor-directory.tsx", import.meta.url);
     const source = await readFile(directoryPath, "utf8");
     expect(source).toContain('t("columns.subcategory")');
-    expect(source).toContain('border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-muted)]');
+    expect(source).toContain('rounded-md bg-[var(--ui-surface-muted)]');
     expect(source).toContain('<span className="text-[var(--ui-text-muted)]">—</span>');
     expect(source).not.toContain('aria-hidden="true" className="text-xs leading-none text-[var(--ui-text-muted)]">›</span>');
     expect(source).toContain('text-xs font-normal leading-5 text-[var(--ui-text-secondary)]"');
@@ -66,7 +80,7 @@ describe("contractor subcategory presentation", () => {
     const source = await readFile(directoryPath, "utf8");
 
     expect(source).toContain('className="block min-w-0"');
-    expect(source).toContain('inline-flex max-w-full min-w-0 items-center rounded-full');
+    expect(source).toContain('inline-flex max-w-full min-w-0 items-center rounded-md');
     expect(source).toContain('className="min-w-0 truncate whitespace-nowrap">{item.name}</span>');
     expect(source).toContain('content={item.name}');
   });

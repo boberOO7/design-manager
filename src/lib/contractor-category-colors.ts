@@ -5,15 +5,15 @@ export const contractorCategoryColorKeys = [
 export type ContractorCategoryColorKey = (typeof contractorCategoryColorKeys)[number];
 
 const categoryBadgeClasses: Record<ContractorCategoryColorKey, string> = {
-  red: "border border-[var(--ui-danger-border)] bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]",
-  orange: "border border-[var(--ui-urgent-border)] bg-[var(--ui-urgent-surface)] text-[var(--ui-urgent-text)]",
-  yellow: "border border-[var(--ui-warning-border)] bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]",
-  green: "border border-[var(--ui-success-border)] bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]",
-  teal: "border border-[var(--ui-category-teal-border)] bg-[var(--ui-category-teal-surface)] text-[var(--ui-category-teal-text)]",
-  blue: "border border-[var(--ui-info-border)] bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]",
-  pink: "border border-[var(--ui-category-pink-border)] bg-[var(--ui-category-pink-surface)] text-[var(--ui-category-pink-text)]",
-  purple: "border border-[var(--ui-category-purple-border)] bg-[var(--ui-category-purple-surface)] text-[var(--ui-category-purple-text)]",
-  bronze: "border border-[var(--ui-category-bronze-border)] bg-[var(--ui-category-bronze-surface)] text-[var(--ui-category-bronze-text)]",
+  red: "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)]",
+  orange: "bg-[var(--ui-urgent-surface)] text-[var(--ui-urgent-text)]",
+  yellow: "bg-[var(--ui-warning-surface)] text-[var(--ui-warning-text)]",
+  green: "bg-[var(--ui-success-surface)] text-[var(--ui-success-text)]",
+  teal: "bg-[var(--ui-category-teal-surface)] text-[var(--ui-category-teal-text)]",
+  blue: "bg-[var(--ui-info-surface)] text-[var(--ui-info-text)]",
+  pink: "bg-[var(--ui-category-pink-surface)] text-[var(--ui-category-pink-text)]",
+  purple: "bg-[var(--ui-category-purple-surface)] text-[var(--ui-category-purple-text)]",
+  bronze: "bg-[var(--ui-category-bronze-surface)] text-[var(--ui-category-bronze-text)]",
 };
 
 export function isContractorCategoryColorKey(value: string): value is ContractorCategoryColorKey {
@@ -23,7 +23,7 @@ export function isContractorCategoryColorKey(value: string): value is Contractor
 export function getContractorCategoryBadgeClassName(colorKey: string): string {
   return isContractorCategoryColorKey(colorKey)
     ? categoryBadgeClasses[colorKey]
-    : "border border-[var(--ui-border)] bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
+    : "bg-[var(--ui-surface-muted)] text-[var(--ui-text-secondary)]";
 }
 
 export function getContractorCategoryColorLabel(colorKey: ContractorCategoryColorKey, locale: string): string {

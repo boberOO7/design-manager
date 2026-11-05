@@ -67,8 +67,12 @@ ownership through the contractor category and retains a private name snapshot.
 Referenced contractors cannot be deleted; directory edits do not rewrite Finance.
 
 - Contractors are studio-scoped through category ownership.
-- Any active studio member can create and update contractor records and resolve
-  category/subcategory classification.
+- Verified contractors are visible to active members; prospective contacts are
+  admin-only under RLS. Existing records default to verified.
+- Only admins may change cooperation status or recommendation. Recommendations
+  require verified status; changing to prospective clears them in the same UPDATE.
+- Any active studio member can create verified contractors, update visible
+  records, and resolve category/subcategory classification.
 - Only administrators may delete contractors, change category colors, rename
   categories, or delete unused categories.
 - Categories cannot be deleted while contractors reference them. Contractors

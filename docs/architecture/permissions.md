@@ -44,7 +44,7 @@ server guard before changing a write.
 | Employee profile task activity | Any studio member's profile | Own completed-task calendar and current work only; colleague profiles contain identity and permitted shared projects |
 | Internal employee notes | Read and add within studio, including former employees | No access, including notes about self |
 | Invite/edit/remove/restore studio members | Yes | No; self-service profile fields use separate constrained paths |
-| Contractors | Create and edit; delete and manage categories | Create and edit; no deletion/category administration |
+| Contractors | View both statuses; create/edit, manage status/recommendation, delete and manage categories | View/create/edit verified contacts; read recommendations |
 | Time-off request | Own request | Own request |
 | Time-off review/private details | All authorized studio requests | Own requests only |
 | Calendar events | Subject to event/project rules | Subject to event/project rules |

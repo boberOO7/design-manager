@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { z } from "zod";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { createClient } from "@/lib/supabase/server";
@@ -34,6 +35,7 @@ function nullable(value: string | undefined) {
 
 function getContractorValues(values: ContractorFormValues) {
   return {
+    ...(values.cooperation_status ? { cooperation_status: values.cooperation_status } : {}),
     name: values.name,
     website_url: nullable(values.website_url),
     phone: nullable(values.phone),
@@ -60,6 +62,7 @@ export async function createContractor(
   if (!membership) return { formError: t("errors.createPermission") };
   const parsed = await parseForm(formData);
   if (!("values" in parsed)) return parsed;
+  if (parsed.values.cooperation_status && membership.system_role !== "admin") return { formError: t("errors.cooperationPermission") };
 
   const classification = await resolveContractorClassification(parsed.values);
   if ("error" in classification) {
@@ -92,6 +95,7 @@ export async function updateContractor(
   if (!membership) return { formError: t("errors.updatePermission") };
   const parsed = await parseForm(formData);
   if (!("values" in parsed)) return parsed;
+  if (parsed.values.cooperation_status && membership.system_role !== "admin") return { formError: t("errors.cooperationPermission") };
 
   const classification = await resolveContractorClassification(parsed.values);
   if ("error" in classification) {
@@ -111,6 +115,23 @@ export async function updateContractor(
   }
   revalidatePath("/contractors");
   return { contractorId: data.id };
+}
+
+export async function setContractorRecommendation(contractorId: string, recommended: boolean): Promise<{ error?: string }> {
+  const [admin, t] = await Promise.all([getActiveStudioAdmin(), getTranslations("Contractors")]);
+  if (!admin) return { error: t("errors.cooperationPermission") };
+  if (!z.uuid().safeParse(contractorId).success || typeof recommended !== "boolean") return { error: t("errors.recommendationFailed") };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("contractors")
+    .update({ is_recommended: recommended })
+    .eq("id", contractorId).eq("cooperation_status", "verified")
+    .select("id").maybeSingle();
+  if (error || !data) {
+    console.error("Unable to update contractor recommendation", error);
+    return { error: t("errors.recommendationFailed") };
+  }
+  revalidatePath("/contractors");
+  return {};
 }
 
 export async function deleteContractor(contractorId: string): Promise<{ error?: string }> {

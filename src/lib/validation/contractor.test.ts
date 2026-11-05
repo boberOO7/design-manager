@@ -6,6 +6,17 @@ const messages = {
 };
 
 describe("contractor validation", () => {
+  it("accepts only the two cooperation statuses and leaves omitted status untouched", () => {
+    const schema = createContractorSchema(messages);
+    const input = { category: "Electrical", name: "Acme" };
+    expect(schema.parse(input).cooperation_status).toBeUndefined();
+    for (const cooperation_status of ["verified", "prospective"]) expect(schema.parse({ ...input, cooperation_status }).cooperation_status).toBe(cooperation_status);
+    expect(schema.safeParse({ ...input, cooperation_status: "unknown" }).success).toBe(false);
+    const form = new FormData();
+    form.set("cooperation_status", "prospective");
+    expect(getContractorFormInput(form).cooperation_status).toBe("prospective");
+    expect(schema.safeParse({ ...input, is_recommended: true }).success).toBe(false);
+  });
   it("trims category names and rejects empty or overlong rename values", () => {
     const schema = createContractorCategoryNameSchema(messages);
 

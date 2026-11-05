@@ -1,6 +1,6 @@
 import type { Contractor, ContractorCategory, ContractorSubcategory } from "@/data/queries/contractors";
 
-export type ContractorDirectoryFilters = { categoryId: string; subcategoryId: string; query: string };
+export type ContractorDirectoryFilters = { categoryId: string; subcategoryId: string; query: string; status?: Contractor["cooperation_status"] | ""; recommendedOnly?: boolean };
 export type ContractorDirectorySort = { column: "name" | "category" | "subcategory"; direction: "asc" | "desc" };
 
 export function sortContractors(contractors: readonly Contractor[], sort: ContractorDirectorySort, locale: string): Contractor[] {
@@ -31,6 +31,8 @@ export function filterContractors(contractors: readonly Contractor[], filters: C
   return contractors.filter((contractor) =>
     (!filters.categoryId || contractor.category.id === filters.categoryId)
     && (!filters.subcategoryId || contractor.subcategory?.id === filters.subcategoryId)
+    && (!filters.status || contractor.cooperation_status === filters.status)
+    && (!filters.recommendedOnly || contractor.is_recommended)
     && (!query || contractor.name.toLocaleLowerCase().includes(query)),
   );
 }

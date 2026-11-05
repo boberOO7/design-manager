@@ -21,6 +21,7 @@ export function createContractorCategoryNameSchema(messages: Pick<ContractorVali
 export function createContractorSchema(messages: ContractorValidationMessages) {
   const optionalText = (maximum: number, message: string) => z.string().trim().max(maximum, message).optional();
   return z.object({
+  cooperation_status: z.enum(["verified", "prospective"]).optional(),
   category: createContractorCategoryNameSchema(messages),
   subcategory: optionalText(100, messages.subcategoryTooLong),
   name: z.string().trim().min(1, messages.nameRequired).max(200, messages.nameTooLong),
@@ -58,6 +59,7 @@ function getString(formData: FormData, field: string): string | undefined {
 
 export function getContractorFormInput(formData: FormData) {
   return {
+    cooperation_status: getString(formData, "cooperation_status"),
     category: getString(formData, "category"),
     subcategory: getString(formData, "subcategory"),
     name: getString(formData, "name"),

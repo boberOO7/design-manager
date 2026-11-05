@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 
 export type ContractorSubcategory = { id: string; name: string };
 
@@ -11,7 +12,7 @@ export type ContractorCategory = {
   subcategories: ContractorSubcategory[];
 };
 
-export type Contractor = {
+export type Contractor = Pick<Database["public"]["Tables"]["contractors"]["Row"], "cooperation_status" | "is_recommended"> & {
   id: string;
   category: ContractorCategory;
   subcategory: ContractorSubcategory | null;
@@ -41,7 +42,7 @@ export async function getContractors(): Promise<{ categories: ContractorCategory
   const [{ data: contractorRows, error: contractorError }, { data: categoryRows, error: categoryError }] = await Promise.all([
     supabase
       .from("contractors")
-      .select("id, category:contractor_categories!inner(id, name, color_key), subcategory:contractor_subcategories!contractors_subcategory_category_fkey(id, name), name, website_url, phone, description, created_by, created_at, updated_at")
+      .select("id, category:contractor_categories!inner(id, name, color_key), subcategory:contractor_subcategories!contractors_subcategory_category_fkey(id, name), name, cooperation_status, is_recommended, website_url, phone, description, created_by, created_at, updated_at")
       .order("name", { ascending: true })
       .overrideTypes<ContractorQueryRow[], { merge: false }>(),
     supabase

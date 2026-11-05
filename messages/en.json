@@ -350,14 +350,14 @@
   "Contractors": {
     "metadata": "Contractors",
     "title": "Contractors",
-    "description": "A shared directory of trusted studio contacts.",
+    "description": "The shared studio contact directory.",
     "searchLabel": "Search by company name",
     "searchPlaceholder": "Search by company name",
     "allCategories": "All categories",
     "allSubcategories": "All subcategories",
     "add": "Add contractor",
     "actions": "Actions",
-    "openLink": "Open",
+    "openLink": "Open website for {name}",
     "copyPhone": "Copy phone number {phone}",
     "phoneCopied": "Copied",
     "edit": "Edit",
@@ -382,7 +382,7 @@
       "title": "No contractors yet",
       "description": "Add the first contractor to the shared directory.",
       "filteredTitle": "No contractors found",
-      "filteredDescription": "Change the search query or category filter."
+      "filteredDescription": "Try another search or adjust the filters."
     },
     "deleteDialog": {
       "title": "Delete contractor?",
@@ -454,10 +454,30 @@
       "loadDescription": "Refresh the page or try again later.",
       "createPermission": "Only active studio members can add contractors.",
       "createFailed": "Could not add the contractor. Please try again.",
-      "updatePermission": "Only active administrators can edit contractors.",
+      "updatePermission": "Only active studio members can edit contractors.",
       "updateFailed": "Could not update the contractor. Please try again.",
       "deletePermission": "Only active administrators can delete contractors.",
-      "deleteFailed": "Could not delete the contractor. Please try again."
+      "deleteFailed": "Could not delete the contractor. Please try again.",
+      "cooperationPermission": "Only active administrators can change cooperation status and recommendations.",
+      "recommendationFailed": "Could not save the recommendation. Refresh and try again."
+    },
+    "cooperation": {
+      "label": "Cooperation status",
+      "all": "All statuses",
+      "verified": "Verified",
+      "prospective": "Prospective",
+      "verifiedTooltip": "Verified — we have worked together before.",
+      "prospectiveTooltip": "Prospective — a future contact; we have not worked together yet."
+    },
+    "recommendation": {
+      "label": "Recommended",
+      "only": "Recommended only",
+      "add": "Recommend {name}",
+      "remove": "Remove recommendation for {name}",
+      "yes": "Recommended contractor",
+      "no": "No recommendation",
+      "prospective": "Only verified contractors can be recommended.",
+      "saving": "Saving recommendation for {name}…"
     }
   },
   "Navigation": {
@@ -911,15 +931,12 @@
   "Tasks": {
     "correctionCreated": "Created",
     "correctionHistoryClosed": "Closed",
-
     "correctionClientReview": "Correction · Client review",
     "correctionComplete": "Complete",
     "correctionResume": "Return to work",
-
     "correction": "Correction",
     "correctionSubmit": "Submit for review",
     "correctionsHistory": "History ({count})",
-
     "correctionReviewRequired": "An administrator needs to assign reviewers for this correction.",
     "corrections": "Corrections",
     "createCorrection": "Create correction",
@@ -932,7 +949,6 @@
     "cancelCompletionConfirm": "Cancel the original completion? This voids the task’s productivity credit.",
     "correctionTime": "Correction time",
     "originalCompletionDate": "Original completion",
-
     "stageProgressMethods": {
       "title": "Progress method",
       "templateHelp": "Applies to new stages. Existing settings are preserved.",

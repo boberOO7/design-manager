@@ -16,7 +16,7 @@ describe("contractor permissions", () => {
 
   it("authorizes updates with active membership and deletion with active admin access", async () => {
     const source = await readFile(actionsPath, "utf8");
-    const updateAction = source.slice(source.indexOf("export async function updateContractor"), source.indexOf("export async function deleteContractor"));
+    const updateAction = source.slice(source.indexOf("export async function updateContractor"), source.indexOf("export async function setContractorRecommendation"));
     const deleteAction = source.slice(source.indexOf("export async function deleteContractor"), source.indexOf("export async function updateContractorCategoryColor"));
 
     expect(updateAction).toContain("getActiveStudioMembership()");

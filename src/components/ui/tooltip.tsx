@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function Tooltip({ children, content, onlyWhenTruncated, openOnClick = false, interactive = false, contentClassName }: {
   children: ReactElement;
   content: ReactNode;
-  onlyWhenTruncated?: string;
+  onlyWhenTruncated?: boolean | string;
   openOnClick?: boolean;
   interactive?: boolean;
   contentClassName?: string;
@@ -32,8 +32,9 @@ export function Tooltip({ children, content, onlyWhenTruncated, openOnClick = fa
 
   function changeOpen(nextOpen: boolean) {
     if (!nextOpen && interactive && contentRef.current?.contains(document.activeElement)) return;
-    const label = onlyWhenTruncated ? trigger?.querySelector<HTMLElement>(onlyWhenTruncated) : null;
-    setOpen(nextOpen && Boolean(content) && (!onlyWhenTruncated || Boolean(label && label.scrollWidth > label.clientWidth)));
+    const label = onlyWhenTruncated === true ? trigger : typeof onlyWhenTruncated === "string" ? trigger?.querySelector<HTMLElement>(onlyWhenTruncated) : null;
+    const isTruncated = Boolean(label && (label.scrollWidth > label.clientWidth || label.scrollHeight > label.clientHeight));
+    setOpen(nextOpen && Boolean(content) && (!onlyWhenTruncated || isTruncated));
   }
 
   return <TooltipPrimitive.Provider delayDuration={400} skipDelayDuration={0}>

@@ -440,10 +440,12 @@ export type Database = {
       contractors: {
         Row: {
           category_id: string
+          cooperation_status: Database["public"]["Enums"]["contractor_cooperation_status"]
           created_at: string
           created_by: string
           description: string | null
           id: string
+          is_recommended: boolean
           name: string
           phone: string | null
           subcategory_id: string | null
@@ -452,10 +454,12 @@ export type Database = {
         }
         Insert: {
           category_id: string
+          cooperation_status?: Database["public"]["Enums"]["contractor_cooperation_status"]
           created_at?: string
           created_by: string
           description?: string | null
           id?: string
+          is_recommended?: boolean
           name: string
           phone?: string | null
           subcategory_id?: string | null
@@ -464,10 +468,12 @@ export type Database = {
         }
         Update: {
           category_id?: string
+          cooperation_status?: Database["public"]["Enums"]["contractor_cooperation_status"]
           created_at?: string
           created_by?: string
           description?: string | null
           id?: string
+          is_recommended?: boolean
           name?: string
           phone?: string | null
           subcategory_id?: string | null
@@ -12429,6 +12435,7 @@ export type Database = {
         | "business_trip"
         | "work_makeup"
         | "interview"
+      contractor_cooperation_status: "verified" | "prospective"
       crm_invalid_reason:
         | "not_submitted"
         | "wrong_number"
@@ -12655,6 +12662,7 @@ export const Constants = {
         "work_makeup",
         "interview",
       ],
+      contractor_cooperation_status: ["verified", "prospective"],
       crm_invalid_reason: [
         "not_submitted",
         "wrong_number",
