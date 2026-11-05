@@ -53,13 +53,32 @@ export type NotificationMessageKey =
   | "taskAssignedBody"
   | "taskAssignedTitle"
   | "taskCollaboratorAssignedBody"
+  | "taskCorrectionAssignedTitle"
   | "taskDetailsChangedTitle"
   | "taskDueDateChangedBody"
   | "taskDueDateRemovedBody"
   | "taskPriorityAndDueDateChangedBody"
   | "taskPriorityChangedBody"
+  | "taskReviewApprovedTitle"
+  | "taskReviewStepApprovedTitle"
+  | "taskReviewApprovedBody"
+  | "taskReviewStepApprovedBody"
+  | "taskCorrectionReviewApprovedTitle"
+  | "taskCorrectionReviewStepApprovedTitle"
+  | "taskCorrectionReviewApprovedBody"
+  | "taskCorrectionReviewStepApprovedBody"
   | "taskReviewRequestedTitle"
   | "taskReviewRequestedBody"
+  | "taskCorrectionReviewRequestedTitle"
+  | "taskCorrectionReviewRequestedBody"
+  | "taskReworkRequestedTitle"
+  | "taskReworkRequestedBody"
+  | "taskCorrectionReworkRequestedTitle"
+  | "taskCorrectionReworkRequestedBody"
+  | "taskCompletedTitle"
+  | "taskCompletedBody"
+  | "taskCorrectionCompletedTitle"
+  | "taskCorrectionCompletedBody"
   | "timeOffApprovedTitle"
   | "timeOffCancelledBody"
   | "timeOffCancelledTitle"
@@ -237,16 +256,54 @@ export function getNotificationPresentation(item: NotificationItem, locale: stri
       const assignmentKind = metadataString(metadata, "assignmentKind");
       const bodyKey = assignmentKind === "collaborator" || item.body.startsWith("You were added") ? "taskCollaboratorAssignedBody" : "taskAssignedBody";
       return subject && project
-        ? { title: t("taskAssignedTitle"), body: t(bodyKey, { project, task: subject }) }
+        ? { title: t(metadataString(metadata, "correctionId") ? "taskCorrectionAssignedTitle" : "taskAssignedTitle"), body: t(bodyKey, { project, task: subject }) }
         : { title: t("taskAssignedTitle"), body: item.body };
     }
     case "task_review_requested": {
       const project = metadataString(metadata, "projectName");
       const round = metadata.roundNumber;
+      const correction = metadataString(metadata, "correctionId") !== null;
       return {
-        title: t("taskReviewRequestedTitle"),
+        title: t(correction ? "taskCorrectionReviewRequestedTitle" : "taskReviewRequestedTitle"),
         body: subject && project && typeof round === "number"
-          ? t("taskReviewRequestedBody", { project, task: subject, round })
+          ? t(correction ? "taskCorrectionReviewRequestedBody" : "taskReviewRequestedBody", { project, task: subject, round })
+          : item.body,
+      };
+    }
+    case "task_review_approved": {
+      const project = metadataString(metadata, "projectName");
+      const correction = metadataString(metadata, "correctionId") !== null;
+      const final = metadataBoolean(metadata, "isFinal") !== false;
+      const bodyKey = correction
+        ? final ? "taskCorrectionReviewApprovedBody" : "taskCorrectionReviewStepApprovedBody"
+        : final ? "taskReviewApprovedBody" : "taskReviewStepApprovedBody";
+      const body = subject && project ? t(bodyKey, { project, task: subject }) : item.body;
+      return {
+        title: t(correction
+          ? final ? "taskCorrectionReviewApprovedTitle" : "taskCorrectionReviewStepApprovedTitle"
+          : final ? "taskReviewApprovedTitle" : "taskReviewStepApprovedTitle"),
+        body,
+      };
+    }
+    case "task_rework_requested": {
+      const project = metadataString(metadata, "projectName");
+      const correction = metadataString(metadata, "correctionId") !== null;
+      const comment = metadataString(metadata, "comment");
+      const body = subject && project
+        ? t(correction ? "taskCorrectionReworkRequestedBody" : "taskReworkRequestedBody", { project, task: subject })
+        : item.body;
+      return {
+        title: t(correction ? "taskCorrectionReworkRequestedTitle" : "taskReworkRequestedTitle"),
+        body: comment ? `${body}\n\n${comment}` : body,
+      };
+    }
+    case "task_completed": {
+      const project = metadataString(metadata, "projectName");
+      const correction = metadataString(metadata, "correctionId") !== null;
+      return {
+        title: t(correction ? "taskCorrectionCompletedTitle" : "taskCompletedTitle"),
+        body: subject && project
+          ? t(correction ? "taskCorrectionCompletedBody" : "taskCompletedBody", { project, task: subject })
           : item.body,
       };
     }

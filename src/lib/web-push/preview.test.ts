@@ -24,8 +24,17 @@ describe("privacy-safe Web Push previews", () => {
 
   it.each([
     { type: "task_assigned", metadata: { subject: "План кухні", projectName: "Квартира" }, title: "Нове призначене завдання", body: "«План кухні» · Квартира" },
+    { type: "task_assigned", metadata: { subject: "План кухні", projectName: "Квартира", correctionId: "cycle", description: "SECRET private correction details" }, title: "Призначено виправлення завдання", body: "«План кухні» · Квартира" },
     { type: "task_assigned", metadata: { subject: "План кухні", assignmentKind: "collaborator" }, title: "Вас додано до завдання", body: "«План кухні»" },
     { type: "task_review_requested", metadata: { subject: "План кухні", projectName: "Квартира", roundNumber: 2 }, title: "Задача очікує вашої перевірки", body: "«План кухні» · Квартира" },
+    { type: "task_review_approved", metadata: { subject: "План кухні", projectName: "Квартира", isFinal: false }, title: "Проміжне схвалення завдання", body: "Один із етапів перевірки схвалено. «План кухні» · Квартира" },
+    { type: "task_review_approved", metadata: { subject: "План кухні", projectName: "Квартира", isFinal: true }, title: "Завдання схвалено після перевірки", body: "Перевірку завершено схваленням. «План кухні» · Квартира" },
+    { type: "task_review_approved", metadata: { subject: "План кухні", projectName: "Квартира", correctionId: "cycle", isFinal: false }, title: "Проміжне схвалення виправлення", body: "Один із етапів перевірки виправлення схвалено. «План кухні» · Квартира" },
+    { type: "task_review_approved", metadata: { subject: "План кухні", projectName: "Квартира", correctionId: "cycle", isFinal: true }, title: "Виправлення схвалено після перевірки", body: "Виправлення схвалено. «План кухні» · Квартира" },
+    { type: "task_rework_requested", metadata: { subject: "План кухні", projectName: "Квартира", comment: "SECRET" }, title: "Потрібні правки до завдання", body: "«План кухні» · Квартира" },
+    { type: "task_rework_requested", metadata: { subject: "План кухні", projectName: "Квартира", correctionId: "cycle", comment: "SECRET" }, title: "Потрібні правки до виправлення", body: "«План кухні» · Квартира" },
+    { type: "task_completed", metadata: { subject: "План кухні", projectName: "Квартира" }, title: "Завдання завершено", body: "«План кухні» · Квартира" },
+    { type: "task_completed", metadata: { subject: "План кухні", projectName: "Квартира", correctionId: "cycle" }, title: "Виправлення завершено", body: "«План кухні» · Квартира" },
     { type: "task_details_changed", metadata: { subject: "План кухні", change: "due_date" }, title: "Дедлайн завдання змінено", body: "«План кухні»" },
     { type: "calendar_event_invitation", metadata: { eventTitle: "Зустріч із командою", projectName: "Квартира" }, title: "Запрошення на подію", body: "«Зустріч із командою» · Квартира" },
     { type: "calendar_event_updated", metadata: { eventTitle: "Зустріч із командою" }, title: "Подію оновлено", body: "«Зустріч із командою»" },
@@ -37,7 +46,9 @@ describe("privacy-safe Web Push previews", () => {
 
   it("localizes context and approvals in English", () => {
     expect(getWebPushPreview({ notification_type: "task_assigned", metadata: { subject: "Kitchen plan", projectName: "Apartment" } }, "en")).toEqual({ title: "New task assigned", body: "“Kitchen plan” · Apartment" });
+    expect(getWebPushPreview({ notification_type: "task_assigned", metadata: { subject: "Kitchen plan", projectName: "Apartment", correctionId: "cycle", description: "SECRET" } }, "en")).toEqual({ title: "Task correction assigned", body: "“Kitchen plan” · Apartment" });
     expect(getWebPushPreview({ notification_type: "time_off_request_approved", metadata: { requesterName: "Private name", requestType: "sick_leave", startDate: "2026-10-12" } }, "en")).toEqual({ title: "Time off approved", body: "View request details in StudioFlow." });
+    expect(getWebPushPreview({ notification_type: "task_rework_requested", metadata: { subject: "Kitchen plan", projectName: "Apartment", comment: "SECRET" } }, "en")).toEqual({ title: "Changes requested on task", body: "“Kitchen plan” · Apartment" });
   });
 
   it.each([

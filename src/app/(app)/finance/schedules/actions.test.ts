@@ -41,6 +41,16 @@ it("checks verified administration before applying defaults or creating a client
   expect(mocks.client).not.toHaveBeenCalled();
 });
 
+it("saves incoming rules and pause revisions through the same RPC, excluding expense arrangements", async () => {
+  const input = { intent: "schedule", kind: "recurring", direction: "incoming", accountId: id, revision: "0", name: "Other income", amount: "250.50", currency: "UAH", categoryId: id, intervalMonths: "1", payoutDay: "31", effectiveFrom: "2026-09-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown", isPaused: "true" };
+  expect((await saveFinanceSchedule({ status: "idle" }, form(input))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_finance_recurring_schedule", expect.objectContaining({ p_input: expect.objectContaining({ direction: "incoming", accountId: id, isPaused: true }) }));
+  mocks.rpc.mockClear();
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, accountId: "" }))).status).toBe("error");
+  expect((await saveFinanceSchedule({ status: "idle" }, form({ ...input, intent: "arrangement", servicePolicy: "manual" }))).status).toBe("error");
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+
 it("removes only a validated payroll configuration through the guarded RPC", async () => {
   expect((await saveFinanceSchedule({ status: "idle" }, form({ intent: "remove", scheduleId: id, revision: "1" }))).status).toBe("success");
   expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("remove_unconsumed_finance_payroll", { p_studio_id: "verified", p_request_id: id, p_schedule_id: id, p_revision: 1 });

@@ -7,8 +7,9 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ n
   if (!membership) return NextResponse.json({ success: false, error: "Authentication is required." }, { status: 401 });
   const { notificationId } = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() })
+  const readAt = new Date().toISOString();
+  const { data, error } = await supabase.from("notifications").update({ read_at: readAt })
     .eq("id", notificationId).eq("recipient_id", membership.authenticatedUserId).is("read_at", null).select("id, read_at").maybeSingle();
   if (error) return NextResponse.json({ success: false, error: "The notification could not be updated." }, { status: 400 });
-  return NextResponse.json({ success: true, notification: data });
+  return NextResponse.json({ success: true, notification: data, readAt: data?.read_at ?? readAt });
 }

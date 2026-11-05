@@ -167,6 +167,20 @@ describe("notification panel localization", () => {
     expect(presentation("uk", { ...notification, metadata: {} }).body).toBe(notification.body);
   });
 
+  it.each([
+    { type: "task_review_approved", metadata: { subject: "Concept design", projectName: "River House", isFinal: false, comment: "Do not show an approval comment" }, en: { title: "Review step approved", body: "A reviewer approved a step for “Concept design” in River House." }, uk: { title: "Проміжне схвалення завдання", body: "Перевіряючий схвалив один з етапів для завдання «Concept design» у проєкті River House." } },
+    { type: "task_review_approved", metadata: { subject: "Concept design", projectName: "River House", isFinal: true }, en: { title: "Task review approved", body: "Review of “Concept design” in River House was approved." }, uk: { title: "Завдання схвалено після перевірки", body: "Перевірку завдання «Concept design» у проєкті River House схвалено." } },
+    { type: "task_review_approved", metadata: { subject: "Concept design", projectName: "River House", correctionId: "cycle-1", isFinal: false }, en: { title: "Correction review step approved", body: "A reviewer approved a step for the correction to “Concept design” in River House." }, uk: { title: "Проміжне схвалення виправлення", body: "Перевіряючий схвалив один з етапів виправлення завдання «Concept design» у проєкті River House." } },
+    { type: "task_review_approved", metadata: { subject: "Concept design", projectName: "River House", correctionId: "cycle-1", isFinal: true }, en: { title: "Correction review approved", body: "Review of the correction to “Concept design” in River House was approved." }, uk: { title: "Виправлення схвалено після перевірки", body: "Перевірку виправлення завдання «Concept design» у проєкті River House схвалено." } },
+    { type: "task_rework_requested", metadata: { subject: "Concept design", projectName: "River House", comment: "Move the entry" }, en: { title: "Changes requested on task", body: "Changes were requested for “Concept design” in River House.\n\nMove the entry" }, uk: { title: "Потрібні правки до завдання", body: "Для завдання «Concept design» у проєкті River House потрібні правки.\n\nMove the entry" } },
+    { type: "task_rework_requested", metadata: { subject: "Concept design", projectName: "River House", correctionId: "cycle-1" }, en: { title: "Changes requested on correction", body: "Changes were requested for the correction to “Concept design” in River House." }, uk: { title: "Потрібні правки до виправлення", body: "Для виправлення завдання «Concept design» у проєкті River House потрібні правки." } },
+    { type: "task_completed", metadata: { subject: "Concept design", projectName: "River House" }, en: { title: "Task completed", body: "“Concept design” in River House was completed." }, uk: { title: "Завдання завершено", body: "Завдання «Concept design» у проєкті River House завершено." } },
+  ] as const)("localizes task workflow event $type", ({ type, metadata, en, uk }) => {
+    const notification = item({ notification_type: type, metadata });
+    expect(presentation("en", notification)).toEqual(en);
+    expect(presentation("uk", notification)).toEqual(uk);
+  });
+
   it("translates compatible legacy time-off rows without changing the requester name", () => {
     const legacy = item({
       notification_type: "time_off_request_submitted",

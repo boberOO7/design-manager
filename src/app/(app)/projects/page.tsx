@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { ProjectsNavigationBoundary } from "@/components/projects/projects-navigation-boundary";
-import { Plus } from "lucide-react";
+import { LayoutTemplate, Plus } from "lucide-react";
 import { InstaLoadReady } from "@/components/shared/instaload-motion";
 import { ProjectListBlueprint, ProjectsBlueprint } from "@/components/projects/projects-blueprint";
 import Link from "next/link";
@@ -41,8 +41,18 @@ export default async function ProjectsPage() {
   const [t, profile, membership, scope] = await Promise.all([getTranslations("Projects"), getCurrentUserProfile(), getActiveStudioMembership(), getProjectsNavigationScope()]);
   if (!profile) return <div className="space-y-6"><PageHeader title={t("title")} description={t("loginDescription")} /><EmptyState title={t("loginRequired")} /></div>;
   return <ProjectsNavigationBoundary snapshot={{ scope, prefetched, renderId: randomUUID() }} fallback={<ProjectsBlueprint />}><div className="space-y-6">
-    <PageHeader title={t("title")} description={t("description")} action={membership?.system_role === "admin" ? <Button asChild variant="ghost"><Link href="/projects/templates">{t("projectTemplates")}</Link></Button> : undefined} />
-    <ProjectListToolbar action={membership?.system_role === "admin" ? <Suspense fallback={<Button disabled className="min-h-11 gap-1.5" aria-busy="true"><Plus className="size-4" aria-hidden="true" />{t("newProject")}</Button>}>{creation}</Suspense> : undefined} />
+    <PageHeader title={t("title")} description={t("description")} />
+    <ProjectListToolbar action={membership?.system_role === "admin" ? (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button asChild variant="ghost" className="min-h-11 gap-2 px-4 duration-200 motion-reduce:transition-none">
+          <Link href="/projects/templates">
+            <LayoutTemplate className="size-4 shrink-0" aria-hidden="true" />
+            {t("projectTemplates")}
+          </Link>
+        </Button>
+        <Suspense fallback={<Button disabled className="min-h-11 gap-2 px-4 duration-200 motion-reduce:transition-none" aria-busy="true"><Plus className="size-4" aria-hidden="true" />{t("newProject")}</Button>}>{creation}</Suspense>
+      </div>
+    ) : undefined} />
     <Suspense fallback={<ProjectListBlueprint />}><ProjectsStream pending={projects} /></Suspense>
   </div></ProjectsNavigationBoundary>;
 }

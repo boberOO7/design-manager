@@ -18,7 +18,7 @@ export async function getNotificationData(): Promise<NotificationData> {
   if (!membership) return { items: [], unreadCount: 0, realtimeStartedAt };
   const supabase = await createClient();
   const [itemsResult, unreadResult] = await Promise.all([
-    supabase.from("notifications").select("id, notification_type, title, body, href, metadata, read_at, created_at, actor:profiles!notifications_actor_id_fkey(full_name)").eq("recipient_id", membership.authenticatedUserId).lte("created_at", realtimeStartedAt).order("created_at", { ascending: false }).limit(30),
+    supabase.from("notifications").select("id, notification_type, title, body, href, metadata, read_at, created_at, actor:profiles!notifications_actor_id_fkey(full_name)").eq("recipient_id", membership.authenticatedUserId).lte("created_at", realtimeStartedAt).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30),
     supabase.from("notifications").select("id", { count: "exact", head: true }).eq("recipient_id", membership.authenticatedUserId).lte("created_at", realtimeStartedAt).is("read_at", null),
   ]);
   if (itemsResult.error || unreadResult.error) {

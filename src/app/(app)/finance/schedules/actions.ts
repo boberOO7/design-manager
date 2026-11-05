@@ -25,7 +25,7 @@ export async function saveFinanceSchedule(_state: FinanceActionState, form: Form
     if (!parsed.success) return { status: "error", message: t(`schedules.errors.${financeScheduleValidationError(parsed.error.issues)}`) };
     const { requestId, ...input } = parsed.data;
     const arrangement = raw.intent === "arrangement" ? recurringArrangementInputSchema.safeParse({ policy: raw.servicePolicy, serviceStart: raw.serviceStart, projectId: raw.serviceProjectId }) : null;
-    if (arrangement && (!arrangement.success || input.kind !== "recurring")) return { status: "error", message: t("schedules.errors.invalid") };
+    if (arrangement && (!arrangement.success || input.kind !== "recurring" || input.direction !== "outgoing")) return { status: "error", message: t("schedules.errors.invalid") };
     // Reject cached legacy forms rather than silently dropping an explicit service exception.
     if (raw.intent === "schedule" && ["servicePolicy", "serviceStart", "serviceProjectId", "expenseConfirmed", "expensePolicy", "expenseServiceStart", "expenseProjectId"].some(key => key in raw)) return { status: "error", message: t("schedules.errors.invalid") };
     if (input.kind === "recurring" && !input.name) {

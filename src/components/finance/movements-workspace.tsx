@@ -47,29 +47,29 @@ const storedSplits = (payload: unknown, key: "projectReceiptSplits" | "projectRe
 };
 const splitJson = (rows: SplitRow[]) => JSON.stringify(rows.filter(row => row.projectId && row.amount.trim()).map(row => ({ projectId: row.projectId, amount: row.amount.trim().replace(",", ".") })));
 
-export function EntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
+export function EntryForm({ data, today, transfer, refund, correction, expected, defaultAccountId, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; defaultAccountId?: string | null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance.payrollCash");
   const [context, setContext] = useState<{ itemId: string; value: PayrollPayment | null; period?: PayrollPeriod } | null>(null);
   const [error, setError] = useState(false);
   const paymentCurrency = sortFinanceAccounts(data.accounts.filter(account => !account.archived_at), expected?.currency)[0]?.currency ?? expected?.currency ?? "UAH";
   useEffect(() => {
     let active = true;
-    if (expected?.id && !correction && !refund) loadFinancePayrollPayment(expected.id, today, "nbu", "", paymentCurrency).then(async value => {
+    if (expected?.id && expected.direction === "outgoing" && !correction && !refund) loadFinancePayrollPayment(expected.id, today, "nbu", "", paymentCurrency).then(async value => {
       const period = value && expected.certainty === "estimated" ? await loadFinancePayrollPeriod(value.obligationId) : undefined;
       if (value && expected.certainty === "estimated" && !period) throw new Error("Unable to load payroll confirmation.");
       if (active) { setContext({ itemId: expected.id ?? "", value, period: period ?? undefined }); setError(false); }
     }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [expected?.id, expected?.certainty, today, correction, refund, paymentCurrency]);
-  if (expected?.id && !correction && !refund) {
+  }, [expected?.id, expected?.direction, expected?.certainty, today, correction, refund, paymentCurrency]);
+  if (expected?.id && expected.direction === "outgoing" && !correction && !refund) {
     if (error) return <p role="alert">{t("loadError")}</p>;
     if (context?.itemId !== expected.id) return <p role="status">{t("loading")}</p>;
     if (context.value) return <PayrollPaymentForm currencies={data.currencies} accounts={data.accounts} today={today} itemId={expected.id} initial={context.value} period={context.period} onSaved={onSaved} onPending={onPending} />;
   }
-  return <MovementEntryForm data={data} today={today} transfer={transfer} refund={refund} correction={correction} expected={expected} projectCash={projectCash} onSaved={onSaved} onPending={onPending} />;
+  return <MovementEntryForm data={data} today={today} transfer={transfer} refund={refund} correction={correction} expected={expected} defaultAccountId={defaultAccountId} projectCash={projectCash} onSaved={onSaved} onPending={onPending} />;
 }
 
-function MovementEntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
+function MovementEntryForm({ data, today, transfer, refund, correction, expected, defaultAccountId, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; defaultAccountId?: string | null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const active = sortFinanceAccounts(data.accounts.filter(account => !account.archived_at), expected?.currency);
@@ -89,10 +89,10 @@ function MovementEntryForm({ data, today, transfer, refund, correction, expected
   const [kind, setKind] = useState(correction?.kind ?? (refund ? "refund" : transfer ? "transfer" : expectedCategory?.nature === "owner_distribution" ? "owner_withdrawal" : expected?.direction??"incoming"));
   const allowedCategories=expected?data.categories.filter((category)=>category.nature===expectedCategory?.nature):data.categories;
   const [categoryId,setCategoryId]=useState(correction?.category_id ?? (expectedCategory&&!expectedCategory.archived_at?expectedCategory.id:""));
-  const [accountId, setAccountId] = useState(originalAccount ?? active[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(originalAccount ?? active.find(account => account.id === defaultAccountId)?.id ?? active[0]?.id ?? "");
   const [destinationId, setDestinationId] = useState(originalDestination?.account_id ?? active.find((account) => account.id !== accountId)?.id ?? "");
   const [date, setDate] = useState(correction?.financial_date ?? today);
-  const [amount, setAmount] = useState(originalEntry ? (balanceCorrection ? String(originalEntry.amount) : String(originalEntry.amount).replace(/^-/, "")) : expected && active[0]?.currency===expected.currency?expected.remaining_amount?.toString()??"":"");
+  const [amount, setAmount] = useState(originalEntry ? (balanceCorrection ? String(originalEntry.amount) : String(originalEntry.amount).replace(/^-/, "")) : expected && active.find(account => account.id === accountId)?.currency===expected.currency?expected.remaining_amount?.toString()??"":"");
   const sourceReceipt = projectCash?.receipts.find(item => item.id === (refund?.id ?? (refundCorrection ? correction?.related_movement_id : correction?.kind === "incoming" ? correction.id : undefined)));
   const previousRefundSplits = storedSplits(originalPayload, "projectRefundSplits");
   const [receiptSplitsEnabled, setReceiptSplitsEnabled] = useState(false);
@@ -227,7 +227,7 @@ function MovementEntryForm({ data, today, transfer, refund, correction, expected
   </FinanceActionForm>;
 }
 
-export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; history?:boolean; expected?:FinanceExpected|null; returnHref?:string; sourceMovement?: FinanceSourceMovement | null; movementLinkUnavailable?: boolean; projectCash?: FinanceProjectCash | null }) {
+export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; history?:boolean; expected?:FinanceExpected|null; defaultAccountId?: string | null; returnHref?:string; sourceMovement?: FinanceSourceMovement | null; movementLinkUnavailable?: boolean; projectCash?: FinanceProjectCash | null }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const router=useRouter();
@@ -343,7 +343,7 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
       </div>
     </Dialog>
     <Dialog isOpen={editor !== null} className={props.expected ? "h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[40rem]" : undefined} closeDisabled={pending} onRequestClose={() => {setEditor(null);if(props.expected)router.replace(props.returnHref??"/finance/expected");}} title={editor === "transfer" ? t("movements.transfer") : typeof editor === "object" && editor ? t("movements.refund") : t(props.expected ? "planning.recordPayment" : "movements.add")} closeLabel={t("movements.close")}>
-      {editor !== null ? <div className={props.expected ? "min-h-0 overflow-y-auto p-4 sm:p-6" : "p-5"}><EntryForm data={props} today={props.today} transfer={editor === "transfer"} refund={typeof editor === "object" ? editor : undefined} expected={props.expected} projectCash={props.projectCash} onSaved={() => {setEditor(null);if(props.expected)router.push(props.returnHref??"/finance/expected");}} onPending={setPending} /></div> : null}
+      {editor !== null ? <div className={props.expected ? "min-h-0 overflow-y-auto p-4 sm:p-6" : "p-5"}><EntryForm data={props} today={props.today} transfer={editor === "transfer"} refund={typeof editor === "object" ? editor : undefined} expected={props.expected} defaultAccountId={props.defaultAccountId} projectCash={props.projectCash} onSaved={() => {setEditor(null);if(props.expected)router.push(props.returnHref??"/finance/expected");}} onPending={setPending} /></div> : null}
     </Dialog>
     <Dialog isOpen={reversing !== null} closeDisabled={pending} onRequestClose={() => setReversing(null)} title={t("movements.reverse")} closeLabel={t("movements.close")}>
       {reversing ? <div className="p-5"><FinanceActionForm action={saveFinanceMovement} label={t("movements.confirmReverse")} onSaved={() => setReversing(null)} onPending={setPending}>

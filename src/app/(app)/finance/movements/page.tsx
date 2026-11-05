@@ -18,5 +18,5 @@ export default async function FinanceMovementsPage({ searchParams }: { searchPar
   const movementId = params.movement && z.uuid().safeParse(params.movement).success ? params.movement : null;
   const sourceMovement = movementId ? await getFinanceSourceMovement(movementId) : null;
   const returnHref=expected?.id?await getFinanceExpectedReturnHref(expected.id):"/finance/expected";
-  return <FinanceMovementsWorkspace {...foundation} {...ledger} projectCash={projectCash} expected={expected} returnHref={returnHref} history={history} page={page} today={getKyivDateOnly()} sourceMovement={sourceMovement} movementLinkUnavailable={Boolean(params.movement && !sourceMovement)} />;
+  return <FinanceMovementsWorkspace {...foundation} {...ledger} projectCash={projectCash} expected={expected} defaultAccountId={expected?.defaultAccountId} returnHref={returnHref} history={history} page={page} today={getKyivDateOnly()} sourceMovement={sourceMovement} movementLinkUnavailable={Boolean(params.movement && !sourceMovement)} />;
 }

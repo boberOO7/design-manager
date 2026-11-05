@@ -56,13 +56,8 @@ self.addEventListener("push", event => {
     try { notification = await resolveNotification(data, controller.signal); }
     catch (error) { if (cancelled()) return; throw error; }
     finally { if (previewRequest === controller) previewRequest = undefined; }
-    if (cancelled() || !notification || notification.read || await receipt(data.notificationId).catch(() => false)) return;
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    if (cancelled()) return;
-    if (notification.test !== true && windows.some(client => client.focused && new URL(client.url).origin === self.location.origin)) {
-      await receipt(data.notificationId, true).catch(() => {});
-      return;
-    }
+    if (cancelled() || !notification || notification.read) return;
+    if (await receipt(data.notificationId).catch(() => false) || cancelled()) return;
     // Use only the server's privacy-filtered preview, after recipient validation.
     // Older server responses still have the generic, localized fallback.
     await self.registration.showNotification(typeof notification.title === "string" && notification.title.trim() ? notification.title : "StudioFlow", {

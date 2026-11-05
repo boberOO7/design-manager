@@ -41,13 +41,37 @@ export function getWebPushPreview(notification: Notification, locale: string, ca
       break;
     }
     case "task_assigned":
-      title = t(value("assignmentKind") === "collaborator" ? "pushTaskCollaboratorTitle" : "taskAssignedTitle");
+      title = t(value("correctionId") ? "taskCorrectionAssignedTitle" : value("assignmentKind") === "collaborator" ? "pushTaskCollaboratorTitle" : "taskAssignedTitle");
       body = context(subject, t("pushOpenTaskBody"));
       break;
     case "task_review_requested":
-      title = t("taskReviewRequestedTitle");
+      title = t(value("correctionId") ? "taskCorrectionReviewRequestedTitle" : "taskReviewRequestedTitle");
       body = context(subject, t("pushOpenTaskBody"));
       break;
+    case "task_review_approved": {
+      const correction = Boolean(value("correctionId"));
+      const final = metadata.isFinal !== false;
+      title = t(correction
+        ? final ? "taskCorrectionReviewApprovedTitle" : "taskCorrectionReviewStepApprovedTitle"
+        : final ? "taskReviewApprovedTitle" : "taskReviewStepApprovedTitle");
+      const event = t(correction
+        ? final ? "pushTaskCorrectionApprovedFinalBody" : "pushTaskCorrectionApprovedStepBody"
+        : final ? "pushTaskApprovedFinalBody" : "pushTaskApprovedStepBody");
+      body = `${event} ${context(subject, t("pushOpenTaskBody"))}`;
+      break;
+    }
+    case "task_rework_requested": {
+      const correction = Boolean(value("correctionId"));
+      title = t(correction ? "taskCorrectionReworkRequestedTitle" : "taskReworkRequestedTitle");
+      body = context(subject, t("pushOpenTaskBody"));
+      break;
+    }
+    case "task_completed": {
+      const correction = Boolean(value("correctionId"));
+      title = t(correction ? "taskCorrectionCompletedTitle" : "taskCompletedTitle");
+      body = context(subject, t("pushOpenTaskBody"));
+      break;
+    }
     case "task_details_changed": {
       const change = value("change");
       title = t(change === "due_date" ? "pushTaskDueDateTitle" : change === "priority" ? "pushTaskPriorityTitle" : change === "priority_and_due_date" ? "pushTaskPriorityAndDueDateTitle" : "taskDetailsChangedTitle");

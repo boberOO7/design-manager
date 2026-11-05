@@ -8,6 +8,16 @@ describe("realtime notification bell", () => {
     const source = await readFile(bellPath, "utf8");
     expect(source).toContain('{ event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${userId}` }');
     expect(source).toContain("knownIdsRef.current.add(item.id)");
+    expect(source).toContain('status !== "SUBSCRIBED" || disposed');
+    expect(source).toContain('.gt("created_at", sessionStartedAtRef.current)');
+    expect(source).toContain('.is("read_at", null)');
+    expect(source).toContain("recipient_id, notification_type");
+    expect(source).toContain('.order("created_at", { ascending: false })');
+    expect(source).toContain(".limit(notificationPageSize)");
+    expect(source).toContain("while (!disposed)");
+    expect(source).toContain('.lte("created_at", through)');
+    expect(source).toContain("notificationCursorFilter(cursor)");
+    expect(source).toContain("processingIds");
     expect(source).toContain("supabase.removeChannel(channel)");
   });
 

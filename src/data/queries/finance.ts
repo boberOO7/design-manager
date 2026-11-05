@@ -108,7 +108,11 @@ export async function getFinanceExpectedItem(id:string) {
   const client=await createClient();
   const { data,error }=await client.from("finance_expected_balances").select("*").eq("studio_id",admin.studio_id).eq("id",id).maybeSingle();
   if(error) throw new Error("Unable to load expected item.",{ cause:error });
-  return data;
+  if (!data) return null;
+  const link = await client.from("finance_obligation_items").select("obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(terms:finance_schedule_terms!finance_obligations_studio_id_terms_id_schedule_id_fkey(account_id))")
+    .eq("studio_id", admin.studio_id).eq("expected_item_id", id).maybeSingle();
+  if (link.error) throw new Error("Unable to load expected receiving account.", { cause: link.error });
+  return { ...data, defaultAccountId: link.data?.obligation.terms?.account_id ?? null };
 }
 
 export async function getFinanceExpectedReturnHref(id:string) {
@@ -171,7 +175,7 @@ export async function getFinancePlanning(page:number,creditPage:number,filter:st
 
   const links=ids.length ? await client.from("finance_project_items").select("*,project:projects!finance_project_items_project_id_studio_id_fkey(name)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(links?.error) throw new Error("Unable to load project payment context.",{ cause:links.error });
-  const obligations=ids.length ? await client.from("finance_obligation_items").select("obligation_id,expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end)").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
+  const obligations=ids.length ? await client.from("finance_obligation_items").select("obligation_id,expected_item_id,component,obligation:finance_obligations!finance_obligation_items_studio_id_obligation_id_fkey(kind,employee_name,period_start,period_end,terms:finance_schedule_terms!finance_obligations_studio_id_terms_id_schedule_id_fkey(account_id))").eq("studio_id",admin.studio_id).in("expected_item_id",ids) : null;
   if(obligations?.error) throw new Error("Unable to load obligation context.",{ cause:obligations.error });
   const obligationIds=[...new Set(obligations?.data?.map((link)=>link.obligation_id)??[])];
   const payrollCosts=obligationIds.length ? await client.from("finance_payroll_unknown_costs").select("*").eq("studio_id",admin.studio_id).in("obligation_id",obligationIds) : null;

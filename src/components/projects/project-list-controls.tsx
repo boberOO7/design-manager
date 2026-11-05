@@ -43,7 +43,7 @@ export function ProjectListControls({ action, disabled = false, filters }: { act
       <FilterSelect label={t("priority")} value={filters.priority} options={PROJECT_LIST_PRIORITY_FILTERS} getOptionLabel={(option) => option === "all" ? t(PROJECT_LIST_PRIORITY_LABEL_KEYS[option]) : priority(PROJECT_LIST_PRIORITY_LABEL_KEYS[option])} onChange={(value) => update("priority", value)} />
     </div></fieldset>
     {hasActiveProjectListFilters(filters) ? <Button disabled={disabled} type="button" variant="ghost" onClick={resetProjectListFilters}>{t("resetFilters")}</Button> : null}
-    {action ? <div inert={disabled} className="ml-auto shrink-0">{action}</div> : null}
+    {action ? <div inert={disabled} className="ml-auto max-w-full">{action}</div> : null}
   </div>;
 }
 

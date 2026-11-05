@@ -338,6 +338,7 @@ messages. They are not activity history.
 | Producer | Typical recipients/navigation |
 | --- | --- |
 | Task assignment/detail change | Assignee; project task drawer |
+| Task review request/outcome, rework, completion | Current reviewer for requests; executor/collaborators for outcomes, or correction executor; project task drawer |
 | Time-off submission/decision/cancellation | Active admins or requester; Administration/Calendar |
 | Calendar invitation/update/cancellation/assignment | Relevant invitee or assignee; Calendar item |
 | Submission create/assign/status | Active admins, responsible member, or non-anonymous author; Office submission |
@@ -356,10 +357,12 @@ Invariants:
   skipped.
 - A recipient may select their own rows and change only `read_at`; notifications
   cannot be marked unread or have content/identity changed.
-- Header queries return the latest 30 items and a separate exact unread count.
+- Header queries return the latest 30 items and a separate exact unread count;
+  the notification center can load older items.
 - The authenticated header subscribes only to new recipient-scoped inserts.
   Session timestamps and notification IDs suppress historical/reconnected
   duplicates; accepted inserts also merge into the persistent center state.
+  Subscription and reconnection reconcile recent unread inserts missed by Realtime.
 - Up to three transient, localized toasts reuse the notification `href`, dismiss
   after about five seconds, and never mark the notification read. Popup and
   subtle Web Audio feedback are independently controlled by profile preferences;
@@ -382,6 +385,8 @@ Invariants:
   previews. Self-removing pg_cron timers recover only pending/failed work; there
   is no Vercel Push cron or idle queue polling. Service-worker
   display/click handling verifies the current recipient and reuses saved links.
+  Opted-in system notifications display with StudioFlow focused as well as in the
+  background; in-app popup and sound preferences remain independent.
   Installation is optional on desktop Chrome/Edge; there is no offline cache.
   See [PWA and Web Push](../pwa-web-push.md) for lifecycle and deployment details.
 - Email delivery is not implemented.

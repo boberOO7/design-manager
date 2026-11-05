@@ -81,7 +81,7 @@ export function TeamWorkload({ asOf, members, today }: { asOf: string; members: 
         <div className={cn("relative grid gap-x-3 gap-y-1.5 rounded-[calc(var(--ui-radius-panel)-0.125rem)] px-1.5 py-2.5 transition-colors duration-[180ms] ease-out hover:bg-[var(--ui-surface-muted)] focus-within:bg-[var(--ui-surface-muted)] motion-reduce:transition-none lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-center 2xl:grid-cols-[minmax(0,1fr)_31.75rem]", isExpanded && "bg-[var(--ui-surface-muted)]")}>
           <button type="button" aria-expanded={isExpanded} aria-label={member.full_name} onClick={() => toggleMember(member.id)} className="absolute inset-0 cursor-pointer rounded-[calc(var(--ui-radius-panel)-0.125rem)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus-ring)]" />
           <div className="pointer-events-none relative flex min-w-0 items-center gap-2.5">
-            <span data-dashboard-icon className="rounded-full ring-2 ring-[var(--ui-surface)] shadow-sm"><UserAvatar imageUrl={member.avatar_url} name={member.full_name} size="boardCard" decorative /></span>
+            <span data-dashboard-icon className="inline-flex shrink-0 rounded-full ring-2 ring-[var(--ui-surface)] shadow-sm"><UserAvatar imageUrl={member.avatar_url} name={member.full_name} size="boardCard" decorative /></span>
             <div className="min-w-0">
               <b className="block truncate">{member.full_name}</b>
               <small className="block text-[var(--ui-text-muted)]">{member.job_title}</small>

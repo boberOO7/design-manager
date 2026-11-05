@@ -4772,6 +4772,7 @@ export type Database = {
       }
       finance_schedule_terms: {
         Row: {
+          account_id: string | null
           amount: number | null
           basis: string | null
           category_id: string
@@ -4788,6 +4789,7 @@ export type Database = {
           employer_cost_status: string
           id: string
           interval_months: number
+          is_paused: boolean
           name: string
           pay_method: string
           payment_month_offset: number
@@ -4799,6 +4801,7 @@ export type Database = {
           studio_id: string
         }
         Insert: {
+          account_id?: string | null
           amount?: number | null
           basis?: string | null
           category_id: string
@@ -4815,6 +4818,7 @@ export type Database = {
           employer_cost_status?: string
           id?: string
           interval_months: number
+          is_paused?: boolean
           name: string
           pay_method?: string
           payment_month_offset?: number
@@ -4826,6 +4830,7 @@ export type Database = {
           studio_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number | null
           basis?: string | null
           category_id?: string
@@ -4842,6 +4847,7 @@ export type Database = {
           employer_cost_status?: string
           id?: string
           interval_months?: number
+          is_paused?: boolean
           name?: string
           pay_method?: string
           payment_month_offset?: number
@@ -4853,6 +4859,20 @@ export type Database = {
           studio_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "finance_schedule_terms_account_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_account_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id"]
+          },
           {
             foreignKeyName: "finance_schedule_terms_created_by_fkey"
             columns: ["created_by"]
@@ -10453,6 +10473,7 @@ export type Database = {
       }
       finance_schedule_history: {
         Row: {
+          account_id: string | null
           amount: number | null
           basis: string | null
           category_id: string | null
@@ -10469,6 +10490,7 @@ export type Database = {
           employer_cost_status: string | null
           id: string | null
           interval_months: number | null
+          is_paused: boolean | null
           name: string | null
           pay_method: string | null
           payment_month_offset: number | null
@@ -10481,6 +10503,20 @@ export type Database = {
           valid_through: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "finance_schedule_terms_account_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_account_balances"
+            referencedColumns: ["studio_id", "id"]
+          },
+          {
+            foreignKeyName: "finance_schedule_terms_account_fkey"
+            columns: ["studio_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["studio_id", "id"]
+          },
           {
             foreignKeyName: "finance_schedule_terms_created_by_fkey"
             columns: ["created_by"]
@@ -12442,6 +12478,9 @@ export type Database = {
         | "equipment_maintenance_overdue"
         | "task_review_requested"
         | "meta_lead_created"
+        | "task_review_approved"
+        | "task_rework_requested"
+        | "task_completed"
       office_assignment_status:
         | "assigned"
         | "in_progress"
@@ -12672,6 +12711,9 @@ export const Constants = {
         "equipment_maintenance_overdue",
         "task_review_requested",
         "meta_lead_created",
+        "task_review_approved",
+        "task_rework_requested",
+        "task_completed",
       ],
       office_assignment_status: [
         "assigned",

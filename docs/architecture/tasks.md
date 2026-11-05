@@ -146,6 +146,12 @@ Project aggregation and attribution are described in
   notification helper (active recipients only; no self-notifications). The bell
   links directly to the task. My Tasks also shows the pending queue count and a
   queue link independently of notification read state.
+- Each reviewer approval and return for rework notifies the task's executor and
+  collaborators who still have project access. Client-review returns and task
+  completion also notify them; actors and inactive recipients are excluded.
+  Corrections notify their own executor. Every review round/step produces its own
+  event, while stale retries and rolled-back decisions produce none. These events
+  use the same in-app and opted-in Web Push delivery as other notifications.
 
 ## Corrections to completed tasks
 

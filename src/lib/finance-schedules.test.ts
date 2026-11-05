@@ -5,6 +5,17 @@ const id = "66000000-0000-4000-8000-000000000001";
 const payroll = { requestId:id,revision:0,kind:"payroll",employeeId:id,name:"Salary",amount:"1000",currency:"UAH",categoryId:id,intervalMonths:1,payoutDay:31,paymentMonthOffset:1,effectiveFrom:"2026-01-01",commitment:"agreed",certainty:"fixed",basis:"net",employeePayout:"1000",employerCostStatus:"unknown",reason:"Agreement" };
 
 describe("Finance schedule input", () => {
+  it("shares recurring validation for income with a receiving account and versioned pause state", () => {
+    const input = { requestId: id, revision: 0, kind: "recurring", direction: "incoming", accountId: id, name: "Other income", amount: "250,50", currency: "UAH", categoryId: id, intervalMonths: 1, payoutDay: 31, effectiveFrom: "2026-01-01", commitment: "agreed", certainty: "fixed", employerCostStatus: "unknown", reason: "Agreement" };
+    expect(scheduleInputSchema.parse(input)).toMatchObject({ amount: "250.50", accountId: id, isPaused: false });
+    expect(scheduleInputSchema.parse({ ...input, isPaused: "true" }).isPaused).toBe(true);
+    for (const patch of [{ accountId: "" }, { kind: "payroll" }, { direction: "outgoing" }, { isPaused: "yes" }]) {
+      expect(scheduleInputSchema.safeParse({ ...input, ...patch }).success).toBe(false);
+    }
+    for (const intervalMonths of [1, 3, 12]) expect(scheduleInputSchema.safeParse({ ...input, intervalMonths }).success).toBe(true);
+    expect(payrollPayoutDate("2028-02-01", 0, 31)).toBe("2028-02-29");
+    expect(payrollPayoutDate("2027-02-01", 0, 31)).toBe("2027-02-28");
+  });
   it("accepts a separate piecework rate without a fixed salary or employee payout", () => {
     const piecework = { ...payroll, payMethod: "per_m2", ratePerM2: "100,005", amount: "", employeePayout: "" };
     expect(scheduleInputSchema.parse(piecework)).toMatchObject({ payMethod: "per_m2", ratePerM2: "100.005", amount: "", employeePayout: "" });

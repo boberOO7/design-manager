@@ -150,7 +150,7 @@ SQL fixtures roll back. The suite covers ownership, session forgery, grants,
 multiple devices, deduplication, queue leasing, retries, expired endpoints, read
 state and session deletion. JavaScript tests cover generic previews, server
 dispatch, permission denial/revocation, account changes, unsubscribe ordering,
-focused-window suppression, duplicate receipts and authenticated click navigation.
+focused-window delivery, duplicate receipts and authenticated click navigation.
 
 With a running local app and local Supabase, run
 `SUPABASE_TELEMETRY_DISABLED=1 pnpm exec playwright test -c tests/pwa-push.config.ts`.
@@ -174,8 +174,8 @@ On Windows Chrome/Edge, complete manual acceptance:
    Windows notification with a generic preview.
 2. Click it. Confirm the existing/new StudioFlow window opens the correct task
    under the recipient's normal permissions and notification history remains.
-3. Repeat with StudioFlow focused: no redundant system notification where
-   supported. Disable Push and confirm delivery stops for this browser only.
+3. Repeat with StudioFlow focused: confirm the opted-in system notification still
+   appears. Disable Push and confirm delivery stops for this browser only.
 4. Deny site notification permission and verify the blocked state/help. Revoke
    permission after enabling, return to the app and confirm cleanup. Enable
    again, log out, trigger another notification and confirm there is no delivery.

@@ -79,18 +79,6 @@ describe("background Push service worker", () => {
     expect(port.postMessage).toHaveBeenCalledWith({ type: "STUDIOFLOW_PUSH_CLEARED" });
   });
 
-  it("CLEAR rechecks cancellation after the asynchronous window lookup", async () => {
-    const w = worker();
-    let release = () => {};
-    w.matchAll.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve([]); }));
-    const pending = w.fire("push", { data: { json: () => w.data } });
-    await vi.waitFor(() => expect(w.matchAll).toHaveBeenCalledOnce());
-    const clearing = w.fire("message", { data: { type: "STUDIOFLOW_PUSH_CLEAR" } });
-    release();
-    await Promise.all([pending, clearing]);
-    expect(w.show).not.toHaveBeenCalled();
-  });
-
   it("CLEAR waits for an in-flight display, closes it before ACK and requires fresh opt-in", async () => {
     const w = worker();
     let release = () => {};
@@ -137,19 +125,19 @@ describe("background Push service worker", () => {
     expect(w.show).toHaveBeenCalledWith("StudioFlow", expect.objectContaining({ body: "У вас нове сповіщення у StudioFlow.", tag: `studioflow-${w.data.notificationId}` }));
     expect(w.handlers.has("fetch")).toBe(false);
   });
-  it("suppresses notifications when an app window is focused", async () => {
+  it("shows opted-in system notifications while an app window is focused", async () => {
     const w = worker([{ focused: true, visibilityState: "visible" }]);
     await w.fire("push",{ data: { json: () => w.data } });
-    expect(w.show).not.toHaveBeenCalled();
+    expect(w.show).toHaveBeenCalledOnce();
   });
-  it("displays an authenticated self-test while focused and keeps normal suppression", async () => {
+  it("displays an authenticated self-test and subsequent task notification while focused", async () => {
     const w = worker([{ focused: true, visibilityState: "visible" }]);
     w.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ recipientId: w.data.recipientId, href: "/dashboard", read: false, title: "StudioFlow", body: "Це тестове сповіщення StudioFlow.", test: true }) });
     await w.fire("push", { data: { json: () => ({ ...w.data, test: true }) } });
     expect(w.fetch).toHaveBeenCalledWith(`/api/push/test?subscriptionId=${w.data.subscriptionId}`, expect.objectContaining({ credentials: "include" }));
     expect(w.show).toHaveBeenCalledWith("StudioFlow", expect.objectContaining({ body: "Це тестове сповіщення StudioFlow." }));
     await w.fire("push", { data: { json: () => ({ ...w.data, notificationId: "65000000-0000-0000-0000-000000000031" }) } });
-    expect(w.show).toHaveBeenCalledOnce();
+    expect(w.show).toHaveBeenCalledTimes(2);
   });
   it("a test flag cannot bypass the authenticated recipient check", async () => {
     const w = worker([{ focused: true, visibilityState: "visible" }]);
@@ -167,10 +155,10 @@ describe("background Push service worker", () => {
     await w.fire("push", { data: { json: () => w.data } });
     expect(w.show).toHaveBeenCalledOnce();
   });
-  it("checks all windows for actual focus", async () => {
+  it("delivers while another app window is focused", async () => {
     const w = worker([{ focused: false, visibilityState: "visible" }, { focused: true, visibilityState: "visible" }]);
     await w.fire("push", { data: { json: () => w.data } });
-    expect(w.show).not.toHaveBeenCalled();
+    expect(w.show).toHaveBeenCalledOnce();
   });
   it("drops delivery after logout or changed users", async () => {
     const w = worker();

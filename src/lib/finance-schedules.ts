@@ -7,6 +7,9 @@ export const scheduleInputSchema = z.object({
   requestId: z.uuid(), id: z.union([z.uuid(), z.literal("")]).default(""), revision: z.coerce.number().int().min(0),
   groupId: z.union([z.uuid(), z.literal("")]).optional(),
   kind: z.enum(["payroll", "recurring"]), employeeId: z.union([z.uuid(), z.literal("")]).default(""),
+  direction: z.enum(["incoming", "outgoing"]).default("outgoing"),
+  accountId: z.union([z.uuid(), z.literal("")]).default(""),
+  isPaused: z.enum(["true", "false"]).default("false").transform(value => value === "true"),
   name: z.string().trim().max(120).default(""), amount: z.union([planningAmount, z.literal("")]).default(""), currency: z.string().regex(/^[A-Z]{3}$/), categoryId: z.uuid(),
   payMethod: z.enum(["fixed", "per_m2"]).default("fixed"), ratePerM2: z.union([planningAmount, z.literal("")]).default(""),
   intervalMonths: z.coerce.number().pipe(z.union([z.literal(1), z.literal(3), z.literal(12)])),
@@ -29,7 +32,8 @@ export const scheduleInputSchema = z.object({
   .refine((v) => v.payMethod === "per_m2" ? v.kind === "payroll" && Boolean(v.ratePerM2) && !v.amount && !v.employeePayout : Boolean(v.amount) && !v.ratePerM2, { path: ["amount"] })
   .refine((v) => v.kind !== "payroll" || Boolean(v.basis) && (v.payMethod === "per_m2" || Boolean(v.employeePayout)) && (v.basis !== "gross" || v.employeeDeductions !== ""), { path: ["compensation"] })
   .refine((v) => v.kind !== "payroll" || v.intervalMonths === 1 && v.commitment === "agreed" && v.certainty === "fixed", { path: ["configuration"] })
-  .refine((v) => v.kind !== "recurring" || !v.employeeId && !v.basis && !v.employeePayout && !v.employeeDeductions && !v.employerCost, { path: ["configuration"] });
+  .refine((v) => v.kind !== "recurring" || !v.employeeId && !v.basis && !v.employeePayout && !v.employeeDeductions && !v.employerCost, { path: ["configuration"] })
+  .refine(v => v.direction === "incoming" ? v.kind === "recurring" && Boolean(v.accountId) : !v.accountId && !v.isPaused, { path: ["accountId"] });
 export function shiftFinanceMonth(month: string, offset: number) {
   if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)) return "";
   return new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + offset, 1)).toISOString().slice(0, 7);
@@ -79,6 +83,7 @@ export function financeScheduleError(message: string) {
   if (message === "finance_payroll_preview_stale") return "payrollPreviewStale";
   if (message === "finance_payroll_confirmation_required") return "payrollConfirmationRequired";
   if (message === "finance_group_invalid") return "group";
+  if (message === "finance_account_invalid") return "account";
   if (message === "finance_payroll_consumed") return "payrollConsumed";
   if (message === "finance_payroll_cost_locked") return "costLocked";
   if (message === "finance_payroll_cost_category_required") return "costCategory";
@@ -97,6 +102,7 @@ export function financeScheduleValidationError(issues: ReadonlyArray<{ path: Rea
   if (fields.has("effectiveFrom")) return "effectiveFromInput";
   if (fields.has("effectiveThrough")) return "effectiveThroughInput";
   if (fields.has("employeeId")) return "employeeRequired";
+  if (fields.has("accountId")) return "account";
   if (["amount", "basis", "employeePayout", "employeeDeductions", "compensation"].some((field) => fields.has(field))) return "compensationRequired";
   if (fields.has("employerCost") || fields.has("employerCostStatus")) return "employerCostRequired";
   return "invalid";
