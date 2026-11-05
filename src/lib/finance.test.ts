@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financeAccountSchema, financeBalanceEntrySchema, financeAmountUnits, financeAmountText, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount } from "./finance";
+import { financeAccountSchema, financeBalanceEntrySchema, financeAmountUnits, financeAmountText, financeSettingsSchema, openingValuationSchema, formatFinanceAmount, formatFinanceDecimal, canChartFinanceAmount, sortFinanceAccounts } from "./finance";
 
 const currencies = ["UAH", "USD", "EUR", "PLN"].map((code) => ({ code, minor_units: 2 })).concat([
   { code: "JPY", minor_units: 0 }, { code: "KWD", minor_units: 3 }, { code: "CLF", minor_units: 4 }, { code: "IQD", minor_units: 3 },
@@ -79,4 +79,27 @@ it("keeps account corrections and currency totals exact in minor units", () => {
   const input = { requestId: account.requestId, accountId: "62000000-0000-4000-8000-000000000001", kind: "balance_adjustment", date: "2026-09-26", amount: "-12,34" };
   expect(financeBalanceEntrySchema.parse(input).amount).toBe("-12.34");
   expect(financeBalanceEntrySchema.safeParse({ ...input, amount: "1e3" }).success).toBe(false);
+});
+
+describe("Finance account currency order", () => {
+  const accounts = [
+    { id:"eur1", currency:"EUR" }, { id:"usd1", currency:"USD" },
+    { id:"uah1", currency:"UAH" }, { id:"pln1", currency:"PLN" },
+    { id:"eur2", currency:"EUR" }, { id:"uah2", currency:"UAH" },
+    { id:"gbp1", currency:"GBP" }, { id:"cad1", currency:"CAD" },
+  ];
+  it.each([
+    ["USD", ["USD","UAH","UAH","PLN","EUR","EUR","CAD","GBP"]],
+    ["UAH", ["UAH","UAH","USD","PLN","EUR","EUR","CAD","GBP"]],
+    ["PLN", ["PLN","UAH","UAH","USD","EUR","EUR","CAD","GBP"]],
+    ["GBP", ["GBP","UAH","UAH","USD","PLN","EUR","EUR","CAD"]],
+  ])("puts %s payment accounts first", (currency, order) => {
+    expect(sortFinanceAccounts(accounts,currency).map(account=>account.currency)).toEqual(order);
+  });
+  it("keeps account order within each currency without mutating the source", () => {
+    const original = [...accounts];
+    expect(sortFinanceAccounts(accounts).map(account=>account.id)).toEqual(["uah1","uah2","usd1","pln1","eur1","eur2","cad1","gbp1"]);
+    expect(accounts).toEqual(original);
+    expect(sortFinanceAccounts(accounts,"JPY")).toEqual(sortFinanceAccounts(accounts));
+  });
 });

@@ -127,8 +127,17 @@ describe("movement action boundary",()=>{
     mocks.foundation.mockResolvedValue({ settings: { finalized_at: "2026-09-01", base_currency: "UAH" }, accounts: [{ id, currency: "UAH", archived_at: null }], currencies: [{ code: "UAH", minor_units: 2 }] });
     mocks.fx.mockImplementation(async (from: string, _to: string, day: string, mode: string, rate: string) => ({ rate: from === "UAH" ? "1" : rate, source: from === "UAH" ? "identity" : mode, effectiveDate: day }));
     expect((await saveFinanceMovement({ status: "idle" }, form({ intent: "correct", kind: "outgoing", movementId: id, amount: "8000", settlementFxMode: "manual", settlementManualRate: "45" }))).status).toBe("success");
-    expect(mocks.rpc).toHaveBeenCalledWith("correct_finance_movement", expect.objectContaining({ p_input: expect.objectContaining({ payrollCreditCurrency: "USD", payrollFx: { rate: "45", source: "manual", effectiveDate: input.date } }) }));
+    expect(mocks.rpc).toHaveBeenCalledWith("correct_finance_movement", expect.objectContaining({ p_input: expect.objectContaining({ payrollCreditCurrency: "USD", payrollFx: { rate: "45", source: "manual", effectiveDate: input.date, paymentCurrency: "UAH" } }) }));
     expect(mocks.fx).toHaveBeenCalledWith("USD", "UAH", input.date, "manual", "45");
+  });
+  it.each(["USD", "EUR"])("corrects payroll into a %s account using its actual currency", async currency => {
+    const query = (data: unknown) => ({ select: () => query(data), eq: () => query(data), maybeSingle: async () => ({data,error:null}) });
+    mocks.client.mockResolvedValue({from: (table: string) => query(table === "finance_payroll_cash" ? {credit_currency:"USD",credit_rate:1,credit_source:"identity"} : table === "finance_payment_availability" ? {financial_date:input.date,currency:"USD"} : null),rpc:mocks.rpc});
+    mocks.foundation.mockResolvedValue({settings:{finalized_at:input.date,base_currency:"UAH"},accounts:[{id,currency,archived_at:null}],currencies:[{code:currency,minor_units:2}]});
+    mocks.fx.mockImplementation(async (from: string,to: string,day: string) => ({rate:from === to ? "1" : "0.9",source:from === to ? "identity" : "nbu",effectiveDate:day}));
+    expect((await saveFinanceMovement({status:"idle"},form({intent:"correct",kind:"outgoing",movementId:id,amount:"100"}))).status).toBe("success");
+    expect(mocks.fx).toHaveBeenCalledWith("USD",currency,input.date,"nbu","");
+    expect(mocks.rpc).toHaveBeenCalledWith("correct_finance_movement",expect.objectContaining({p_input:expect.objectContaining({payrollFx:{rate:currency === "USD" ? "1" : "0.9",source:currency === "USD" ? "identity" : "nbu",effectiveDate:input.date,paymentCurrency:currency}})}));
   });
   it("recovers a correction retry before FX lookup or current account validation",async()=>{
     const patch={intent:"correct",movementId:id};

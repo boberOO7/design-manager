@@ -48,3 +48,15 @@ it("requires a reason for posted expense edits before touching Finance",async()=
   expect((await saveFinanceTrip({status:"idle"},form({entryId:id}))).status).toBe("error");expect(mocks.rpc).not.toHaveBeenCalled();
   expect((await saveFinanceTrip({status:"idle"},form({entryId:id,reason:"Receipt corrected"}))).status).toBe("success");
 });
+
+it.each(["expense","advance"])("records a USD trip %s from USD cash when reporting FX is unavailable", async kind => {
+  mocks.fx.mockRejectedValue(new Error("NBU unavailable"));
+  expect((await saveFinanceTrip({status:"idle"},form({kind,employeeId:kind === "advance" ? id : "",accountId:id,currency:"USD",fxMode:"nbu"}))).status).toBe("success");
+  expect(mocks.rpc).toHaveBeenCalledWith("record_finance_trip_entry",expect.objectContaining({p_input:expect.objectContaining({amount:"100",currency:"USD",accountId:id})}));
+});
+it("retains required personal-expense and explicit manual valuations", async () => {
+  mocks.fx.mockRejectedValue(new Error("NBU unavailable"));
+  expect((await saveFinanceTrip({status:"idle"},form({currency:"USD",fxMode:"nbu"}))).message).toBe("errors.fx");
+  expect((await saveFinanceTrip({status:"idle"},form({employeeId:"",accountId:id,currency:"USD",fxMode:"manual",manualRate:"invalid"}))).message).toBe("errors.fx");
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});

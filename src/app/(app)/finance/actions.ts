@@ -57,7 +57,7 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
         if (input.data.openingBalance !== 0) {
           try { fx = await resolveFinanceFx(input.data.currency, settings.data.base_currency, date.data,
             submission.fxMode === "nbu" ? "nbu" : "manual", String(submission.manualRate)); }
-          catch { return { status: "error", message: t("openingFx.unavailable") }; }
+          catch { if (submission.fxMode === "manual") return { status: "error", message: t("openingFx.unavailable") }; }
         }
         ({ error, data: id } = await supabase.rpc("create_finance_account_with_opening", {
           p_studio_id: admin.studio_id, p_request_id: input.data.requestId,
@@ -155,9 +155,9 @@ export async function saveFinanceFoundation(_previous: FinanceActionState, form:
     if (input.kind === "balance_adjustment" && book
       && financeAmountUnits(input.amount, currency.minor_units) === financeAmountUnits(book.recorded_balance, currency.minor_units))
       return { status: "error", message: t("balance.noDifference") };
-    let fx;
+    let fx = null;
     try { fx = await resolveFinanceFx(account.currency, data.settings.base_currency, input.date, input.fxMode, input.manualRate); }
-    catch { return { status: "error", message: t("openingFx.unavailable") }; }
+    catch { if (input.fxMode === "manual") return { status: "error", message: t("openingFx.unavailable") }; }
     ({ error, data: id } = await supabase.rpc("record_finance_account_balance", {
       p_studio_id: admin.studio_id, p_request_id: input.requestId,
       p_input: { ...submission, fx, submission },

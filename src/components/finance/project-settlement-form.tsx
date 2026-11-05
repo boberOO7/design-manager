@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { getProjectSettlementOptions, saveProjectSettlement, saveRemainderAdjustment } from "@/app/(app)/finance/project-payments/actions";
 import { quoteFinanceSettlement } from "@/app/(app)/finance/movements/actions";
 import { actualFinanceSettlementRate, previewFinanceAllocationSplit, proposeFinanceAllocations } from "@/lib/finance-fx-preview";
-import { financeAmountText, financeAmountUnits, formatFinanceAmount, formatFinanceDecimal } from "@/lib/finance";
+import { financeAmountText, financeAmountUnits, formatFinanceAmount, formatFinanceDecimal, sortFinanceAccounts } from "@/lib/finance";
 import { remainderReasons, type ProjectSettlementOptions } from "@/lib/finance-project-settlement";
 import type { FinanceExpected } from "@/lib/finance-planning";
 import type { getFinanceData } from "@/data/queries/finance";
@@ -27,7 +27,7 @@ export function ProjectSettlementForm({ data, expected, projectId, today, onSave
   const noteId = useId(), noteField = useRef<HTMLTextAreaElement>(null);
   const [fxOpen, setFxOpen] = useState(false), [allocationOpen, setAllocationOpen] = useState(false), [noteOpen, setNoteOpen] = useState(false);
   useEffect(() => { if (noteOpen) noteField.current?.focus({ preventScroll: true }); }, [noteOpen]);
-  const accounts = data.accounts.filter(account => !account.archived_at);
+  const accounts = sortFinanceAccounts(data.accounts.filter(account => !account.archived_at), expected.currency);
   const expectedCategory = data.categories.find(category => category.id === expected.category_id);
   const [categoryId, setCategoryId] = useState(expectedCategory && !expectedCategory.archived_at ? expectedCategory.id : "");
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");

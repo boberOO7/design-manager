@@ -23,7 +23,7 @@ const account: Props["accounts"][number] = {
 };
 const initial: PayrollPayment = {
   obligationId: id, employeeId: id, employeeName: "Employee", currency: "USD", remaining: "100",
-  date: "2026-10-28", rate: "40", advanceAvailable: "25", advanceUsed: "25", totalUah: "4000", cashDue: "3000", digest: "a".repeat(32),
+  date: "2026-10-28", rate: "40", paymentCurrency: "UAH", advanceAvailable: "25", advanceUsed: "25", totalPayment: "4000", cashDue: "3000", digest: "a".repeat(32),
 };
 const period: PayrollPeriod = {
   obligationId: id, scheduleId: id, employeeName: "Employee", periodStart: "2026-10-01", periodEnd: "2026-10-31",
@@ -32,15 +32,14 @@ const period: PayrollPeriod = {
 };
 function render(patch: Partial<Props> = {}) {
   return renderToStaticMarkup(<NextIntlClientProvider locale="en" timeZone="Europe/Kyiv" messages={en}>
-    <PayrollPaymentForm accounts={[account]} today={initial.date} itemId={id} initial={initial} onSaved={() => {}} onPending={() => {}} {...patch} />
+    <PayrollPaymentForm accounts={[account]} currencies={[{code:"UAH",minor_units:2},{code:"USD",minor_units:2}]} today={initial.date} itemId={id} initial={initial} onSaved={() => {}} onPending={() => {}} {...patch} />
   </NextIntlClientProvider>);
 }
 
 it("pays USD earnings in UAH with a rate source, account choice and advances", () => {
-  const html = render({ accounts: [account, { ...account, id: "usd", name: "USD account", currency: "USD" }, { ...account, id: "archived", name: "Archived UAH", archived_at: "2026-10-01" }] });
+  const html = render({ accounts: [account, { ...account, id: "archived", name: "Archived UAH", archived_at: "2026-10-01" }] });
   expect(html).toContain('name="accountId"');
   expect(html).toContain("UAH account");
-  expect(html).not.toContain("USD account");
   expect(html).not.toContain("Archived UAH");
   expect(html).toContain('value="manual"');
   expect(html).toContain('value="nbu"');
@@ -50,15 +49,15 @@ it("pays USD earnings in UAH with a rate source, account choice and advances", (
   expect(html).toContain('value="3000"');
 });
 
-it("blocks new cash without a UAH account but permits credit-only settlement", () => {
-  expect(render({ accounts: [] })).toContain(en.Finance.payrollCash.noUahAccount);
+it("blocks new cash without an active account but permits credit-only settlement", () => {
+  expect(render({ accounts: [] })).toContain(en.Finance.payrollCash.noAccount);
   const html = render({ accounts: [], initial: { ...initial, advanceAvailable: "100", advanceUsed: "100", cashDue: "0" } });
   expect(html).toContain(en.Finance.payrollCash.applyAdvance);
   expect(html).not.toContain('type="submit" disabled');
 });
 
 it("keeps payment blocked when there is no exchange rate", () => {
-  const html = render({ initial: { ...initial, rate: null, totalUah: null, cashDue: null } });
+  const html = render({ initial: { ...initial, rate: null, totalPayment: null, cashDue: null } });
   expect(html).toContain(en.Finance.payrollCash.quoteError);
   expect(html).toContain('type="submit" disabled');
 });
@@ -84,4 +83,56 @@ it("uses the payment preview digest directly for an already confirmed earning", 
   expect(html).toContain(en.Finance.payrollCash.paymentDescription);
   expect(html).not.toContain("<textarea");
   expect(html).not.toContain('name="earningDigest"');
+});
+
+it("pays directly from USD cash without a salary exchange rate", () => {
+  const html = render({ accounts: [{ ...account, currency: "USD", account_type: "cash", name: "USD cash" }], initial: { ...initial, paymentCurrency: "USD", rate: "1", totalPayment: "100", cashDue: "75" } });
+  expect(html).toContain("USD cash · USD");
+  expect(html).toContain("Payment amount · USD");
+  expect(html).toContain('name="paymentCurrency" value="USD"');
+  expect(html).toContain('value="75"');
+  expect(html).not.toContain('value="manual"');
+  expect(html).not.toContain("1 USD =");
+  expect(html).not.toContain('type="submit" disabled');
+});
+it("does not submit a UAH preview for a USD account", () => {
+  const html = render({ accounts: [{ ...account, currency: "USD" }] });
+  expect(html).not.toContain('value="3000"');
+  expect(html).toContain('name="digest" value=""');
+  expect(html).toContain('type="submit" disabled');
+});
+
+it("quotes a UAH salary in the USD account currency", () => {
+  const html = render({ accounts: [{ ...account, currency:"USD" }], initial: { ...initial, currency:"UAH", paymentCurrency:"USD", rate:"0.025", totalPayment:"2.5", cashDue:"1.88" } });
+  expect(html).toContain("1 UAH = 0.025 USD");
+  expect(html).toContain("Payment amount · USD");
+  expect(html).toContain('value="manual"');
+  expect(html).not.toContain('type="submit" disabled');
+});
+
+it.each(["USD","UAH"] as const)("selects the %s salary account before the other currency groups", currency => {
+  const accounts = ["EUR","PLN","UAH","USD"].map(code=>({...account,id:code,name:`${code} account`,currency:code}));
+  const html = render({ accounts, initial:{...initial,currency,paymentCurrency:currency,rate:"1",totalPayment:"100",cashDue:"75"} });
+  const select = html.match(/<select[^>]*name="accountId"[\s\S]*?<\/select>/)?.[0] ?? "";
+  const order = currency === "USD" ? ["USD","UAH","PLN","EUR"] : ["UAH","USD","PLN","EUR"];
+  expect(select).toContain(`<option value="${currency}" selected="">`);
+  for (let index=1;index<order.length;index++) expect(select.indexOf(`value="${order[index-1]}"`)).toBeLessThan(select.indexOf(`value="${order[index]}"`));
+  expect(html).toContain('value="75"');
+  expect(html).not.toContain('value="manual"');
+});
+
+it("prefills zero and applies frozen USD advances without a current conversion quote", () => {
+  const html = render({initial:{...initial,rate:null,totalPayment:null,advanceAvailable:"100",advanceUsed:"100",cashDue:"0"}});
+  expect(html).toContain('name="amount"');
+  expect(html).toContain('value="0"');
+  expect(html).toContain(en.Finance.payrollCash.applyAdvance);
+  expect(html).not.toContain(en.Finance.payrollCash.quoteError);
+  expect(html).not.toContain('type="submit" disabled');
+  expect(html).not.toContain('value="manual"');
+});
+it("prefills the full USD salary when the USD account is selected", () => {
+  const html = render({accounts:[{...account,currency:"USD"}],initial:{...initial,remaining:"3000",advanceAvailable:"0",advanceUsed:"0",paymentCurrency:"USD",rate:"1",totalPayment:"3000",cashDue:"3000"}});
+  expect(html).toContain('value="3000"');
+  expect(html).not.toContain(en.Finance.payrollCash.quoteError);
+  expect(html).not.toContain('type="submit" disabled');
 });

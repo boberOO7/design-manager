@@ -70,7 +70,7 @@ select throws_like($$select public.record_finance_payroll_payment(pg_temp.fid(1)
 select throws_like($$select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(301),pg_temp.payout(11),
  (select input||jsonb_build_object('earningDigest',repeat('0',32)) from atomic_submission))$$,'%finance_payroll_preview_stale%','stale work calculation rejected');
 select throws_like($$select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(301),pg_temp.payout(11),
- (select input||jsonb_build_object('accountId',pg_temp.fid(999)) from atomic_submission))$$,'%finance_payroll_uah_required%','invalid account fails after nested confirmation');
+ (select input||jsonb_build_object('accountId',pg_temp.fid(999)) from atomic_submission))$$,'%finance_input_invalid%','invalid account fails after nested confirmation');
 select is((select count(*) from public.finance_payroll_earning_revisions where obligation_id=pg_temp.obligation(11)),0::bigint,'failed cash payment rolls back the earning revision');
 select is((select count(*) from public.finance_planning_requests where payload->>'operation' in ('payroll_earning','payroll_payment')),0::bigint,'failed cash payment rolls back both request records');
 select throws_like($$select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(301),pg_temp.payout(11),
@@ -126,5 +126,27 @@ select is((select remaining_amount from public.finance_expected_balances where i
 select pg_temp.pay(311,13,'400');
 select is((select count(*) from public.finance_payroll_earning_revisions where obligation_id=pg_temp.obligation(13)),1::bigint,'later instalment uses the confirmed earning without another revision');
 select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(13)),0::numeric,'later instalment settles remaining salary');
+-- A USD cash payment also confirms piecework atomically, with no settlement quote.
+reset role;
+insert into public.finance_accounts(id,studio_id,name,currency,account_type,opening_balance,created_by)
+values(pg_temp.fid(21),pg_temp.fid(1),'USD cash','USD','cash',0,pg_temp.fid(10));
+insert into public.productivity_attributions(studio_id,project_id,task_id,contributor_id,source_type,task_stage,credited_area_m2,completed_at,contributor_name,contributor_job_title)
+values(pg_temp.fid(1),pg_temp.fid(30),pg_temp.fid(61),pg_temp.fid(15),'task','stage_2',10,pg_temp.month()::timestamp at time zone 'Europe/Kyiv','Employee','Designer');
+set local role authenticated;
+select pg_temp.salary(320,15,jsonb_build_object('currency','USD','ratePerM2','6'));
+create temporary table usd_submission as select jsonb_build_object(
+ 'accountId',pg_temp.fid(21),'date',current_date,'amount','60','note','USD cash salary',
+ 'payrollFx',jsonb_build_object('paymentCurrency','USD'),
+ 'digest',public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(15),current_date,jsonb_build_object('paymentCurrency','USD'))->>'digest',
+ 'earningDigest',public.get_finance_payroll_period(pg_temp.fid(1),pg_temp.obligation(15))->'current'->>'digest',
+ 'earningReason','Paid in USD cash') input;
+select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(321),pg_temp.payout(15),(select input from usd_submission));
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(15)),0::numeric,'USD cash settles newly confirmed USD piecework');
+select is((select count(*) from public.finance_payroll_earning_revisions where obligation_id=pg_temp.obligation(15)),1::bigint,'USD payment confirms the reviewed work once');
+select is((select currency from public.finance_movement_entries where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(321)) and entry_role='primary'),'USD','cash ledger records USD');
+select is((select amount from public.finance_movement_entries where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(321)) and entry_role='primary'),(-60)::numeric,'USD 60 is debited from USD cash');
+select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(321),pg_temp.payout(15),(select input from usd_submission));
+select is((select count(*) from public.finance_payroll_earning_revisions where obligation_id=pg_temp.obligation(15)),1::bigint,'USD retry retains one earning revision');
+select is((select count(*) from public.finance_payroll_cash where obligation_id=pg_temp.obligation(15)),1::bigint,'USD retry retains one payment');
 select * from finish();
 rollback;

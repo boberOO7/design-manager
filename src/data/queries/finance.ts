@@ -10,6 +10,7 @@ import { FINANCE_OVERDUE_DB_FILTER } from "@/lib/finance-planning";
 import { nextProjectPayment } from "@/lib/finance-project-view";
 import { getFinanceMovementContexts } from "./finance-movement-context";
 import type { Database } from "@/types/database.types";
+import { sortFinanceAccounts } from "@/lib/finance";
 
 export type FinancePlanningPeriod = "month" | "30days" | "3months" | "6months" | "all";
 
@@ -34,11 +35,11 @@ export const getFinanceData = cache(async () => {
   ]);
   const error = settings.error ?? accounts.error ?? currencies.error ?? balances.error ?? categories.error;
   if (error) throw new Error("Unable to load Finance.", { cause: error });
-  return { settings: settings.data, accounts: (accounts.data ?? []).map(account => ({ ...account,
+  return { settings: settings.data, accounts: sortFinanceAccounts((accounts.data ?? []).map(account => ({ ...account,
     // PostgREST cast inference drops nullability; validate the nullable wire fields.
     opening_reporting_amount: z.string().nullable().parse(account.opening_reporting_amount),
     opening_fx_rate: z.string().nullable().parse(account.opening_fx_rate),
-  })), currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
+  }))), currencies: currencies.data ?? [], balances: balances.data ?? [], categories:categories.data??[] };
 });
 
 export async function getFinanceCategories() {

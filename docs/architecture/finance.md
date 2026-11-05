@@ -557,19 +557,27 @@ or notifications containing private data.
   correction and economic-recognition adjustment workflows remain authoritative.
   Piecework reporting does not prorate already earned output by elapsed workdays;
   existing Worklog rules still determine project attribution.
-- `finance_payroll_cash` owns UAH salary payments and explicit advances by employee.
-  USD advances freeze their USD credit at the actual advance-date NBU/manual rate;
-  subsequent salary payments deduct that credit before converting the unpaid USD
-  balance to UAH at their own payment-date rate. `finance_payroll_credit_availability`
+- `finance_payroll_cash` owns salary payments and explicit advances by employee.
+  Actual cash uses the selected bank/cash account currency; salary credit and
+  remaining obligations retain the salary currency (UAH or USD). Same-currency
+  payouts use identity FX; cross-currency payouts freeze account units per one
+  salary unit separately from optional reporting valuation.
+  Advances freeze their salary-currency credit at identity or the actual
+  advance-date NBU/manual rate;
+  subsequent salary payments deduct that credit before converting the unpaid
+  balance to the selected account currency at their own payment-date rate.
+  `finance_payroll_credit_availability`
   derives remaining credit from existing cash, refunds and signed allocations.
   An advance is valid with zero production and carries unused credit forward.
   Ordinary salary cash stays tied to its obligation: corrections preserve that
   link, and accrued overpayment never becomes another month's advance implicitly.
   Guarded preview/payment RPCs check the salary/credit digest under the existing
   studio lock and preserve original dated allocation FX. Applying credit alone
-  records allocations without inventing a cash movement. The generic movement
+  records allocations without inventing a cash movement or requiring current FX,
+  including partial advance application. The generic movement
   correction flow also preserves employee ownership and resolves a changed-date
-  advance rate explicitly. Advances do not create a second labor expense.
+  or changed-currency advance rate explicitly. Advances do not create a second
+  labor expense.
 - The configuration page stacks full-width compensation and recurring sections.
   Compact salary rows show employee, amount/basis, payout timing and actionable
   attention; only exceptional periods are exposed. Detailed costs and immutable

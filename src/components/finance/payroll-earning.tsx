@@ -80,7 +80,7 @@ export function PayrollEarningDialog({ obligationId, currencies, accounts, today
   const supportsPayment = Boolean(accounts && today && loaded?.expectedItemId && ["UAH", "USD"].includes(loaded.current.currency));
   const paymentOpen = paying && supportsPayment && loaded;
   return <Dialog className="h-auto max-h-[calc(100dvh-1rem)] sm:max-w-[40rem]" isOpen={Boolean(obligationId)} onRequestClose={onClose} closeDisabled={pending} title={t(paymentOpen ? "pay" : "title")} closeLabel={t("close")}>
-    <div className="min-h-0 overflow-y-auto p-4 sm:p-6">{paymentOpen && loaded.expectedItemId && accounts && today ? <><PayrollPaymentForm accounts={accounts} today={today} itemId={loaded.expectedItemId} period={loaded} onReviewCalculation={() => setPaying(false)} onPending={setPending} onSaved={() => { onClose(); router.refresh(); }} /></> : error ? <p role="alert">{t("loadError")}</p> : loaded ? <><PayrollEarningForm key={loaded.obligationId} onPay={supportsPayment && (!loaded.confirmed || Number(loaded.confirmed.payout) > Number(loaded.paid)) ? () => setPaying(true) : undefined} period={loaded} minorUnits={currencies.find(currency => currency.code === loaded.current.currency)?.minor_units ?? 2} onPending={setPending} onSaved={() => {
+    <div className="min-h-0 overflow-y-auto p-4 sm:p-6">{paymentOpen && loaded.expectedItemId && accounts && today ? <><PayrollPaymentForm currencies={currencies} accounts={accounts} today={today} itemId={loaded.expectedItemId} period={loaded} onReviewCalculation={() => setPaying(false)} onPending={setPending} onSaved={() => { onClose(); router.refresh(); }} /></> : error ? <p role="alert">{t("loadError")}</p> : loaded ? <><PayrollEarningForm key={loaded.obligationId} onPay={supportsPayment && (!loaded.confirmed || Number(loaded.confirmed.payout) > Number(loaded.paid)) ? () => setPaying(true) : undefined} period={loaded} minorUnits={currencies.find(currency => currency.code === loaded.current.currency)?.minor_units ?? 2} onPending={setPending} onSaved={() => {
       if (!loaded.confirmed && supportsPayment) {
         setPeriod(null); setError(false); setPaying(true); setReload(value => value + 1);
       } else onClose();
@@ -96,7 +96,7 @@ export function PayrollPeriods({ scheduleId, employeeName, periods, currencies, 
   const [editing, setEditing] = useState<string | null>(null);
   return <div className="mt-3 flex flex-wrap items-end gap-2">
     {periods.length ? <><FormField label={t("month")}><Select size="compact" width="content" value={selected} onValueChange={setSelected} aria-label={t("month")}>{periods.map(period => <SelectItem key={period.id} value={period.id}>{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${period.period_start}T00:00:00Z`))}</SelectItem>)}</Select></FormField><Button type="button" size="sm" variant="outline" onClick={() => setEditing(selected)}>{t("open")}</Button></> : <p className="text-sm text-[var(--ui-text-muted)]">{t("futureUnknown")}</p>}
-    <PayrollAdvanceControl employeeName={employeeName} scheduleId={scheduleId} accounts={accounts} today={today} />
+    <PayrollAdvanceControl currencies={currencies} employeeName={employeeName} scheduleId={scheduleId} accounts={accounts} today={today} />
     <PayrollEarningDialog accounts={accounts} today={today} key={editing} obligationId={editing} currencies={currencies} onClose={() => setEditing(null)} />
   </div>;
 }

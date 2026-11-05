@@ -37,7 +37,10 @@ export async function saveFinanceTrip(_previous: FinanceActionState, form: FormD
       const setup = await client.from("finance_settings").select("base_currency").eq("studio_id", admin.studio_id).single();
       if (setup.error) return { status: "error", message: t("errors.save") };
       try { fx = await resolveFinanceFx(input.currency, setup.data.base_currency, input.date, input.fxMode, input.manualRate); }
-      catch { return { status: "error", message: t("errors.fx") }; }
+      catch {
+        const cash = input.kind === "advance" || input.kind === "expense" && !input.employeeId;
+        if (!cash || input.fxMode === "manual") return { status: "error", message: t("errors.fx") };
+      }
     }
     const args = { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_trip_id: input.tripId, p_input: { ...input, ...(fx ? { fx } : {}), submission: input } };
     ({ data: id, error } = "entryId" in input && input.entryId ? await client.rpc("edit_finance_trip_entry", {...args,p_entry_id:input.entryId}) : await client.rpc("record_finance_trip_entry",args));

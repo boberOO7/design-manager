@@ -181,3 +181,24 @@ describe("balance cutover action", () => {
     expect((await saveFinanceFoundation({ status: "idle" }, form({ ...input, [`${accountId}.amount`]: "121" }))).message).toBe("cutover.conflict");
   });
 });
+
+describe("native account postings during a reporting FX outage", () => {
+  const accountId = "62000000-0000-4000-8000-000000000001";
+  beforeEach(() => {
+    mocks.fx.mockRejectedValue(new Error("NBU unavailable"));
+    mocks.select.mockResolvedValue({data:[{code:"USD",minor_units:2}],error:null});
+    mocks.financeData.mockResolvedValue({settings:{base_currency:"UAH",cutover_date:"2026-09-01",finalized_at:"2026-09-02"},accounts:[{id:accountId,currency:"USD",opening_balance:0,archived_at:null}],currencies:[{code:"USD",minor_units:2}],balances:[{id:accountId,recorded_balance:"10",ledger_entry_count:0}]});
+  });
+  it("creates a dated USD account opening with unresolved reporting valuation", async () => {
+    expect((await saveFinanceFoundation({status:"idle"},form({intent:"account-dated",accountId:"",name:"USD cash",accountType:"cash",currency:"USD",openingBalance:"3000",date:"2026-09-25",fxMode:"nbu"}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("create_finance_account_with_opening",expect.objectContaining({p_input:expect.objectContaining({openingBalance:"3000",currency:"USD",fx:null})}));
+  });
+  it.each(["account_opening","balance_adjustment"])("records a native USD %s without requiring a reporting quote", async kind => {
+    expect((await saveFinanceFoundation({status:"idle"},form({intent:"balance-entry",accountId,kind,amount:"3000",date:"2026-09-25",fxMode:"nbu"}))).status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("record_finance_account_balance",expect.objectContaining({p_input:expect.objectContaining({amount:"3000",fx:null})}));
+  });
+  it("keeps explicit manual valuation errors visible", async () => {
+    expect((await saveFinanceFoundation({status:"idle"},form({intent:"balance-entry",accountId,kind:"balance_adjustment",amount:"3000",date:"2026-09-25",fxMode:"manual",manualRate:"invalid"}))).message).toBe("openingFx.unavailable");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});

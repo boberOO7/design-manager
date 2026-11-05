@@ -8,7 +8,7 @@ import type { getFinanceData } from "@/data/queries/finance";
 import type { FinanceTripData } from "@/data/queries/finance-trips";
 import { tripDays, tripEntrySchema, tripPerDiem } from "@/lib/finance-trips";
 import { projectReferenceValue } from "@/lib/finance-project-plan";
-import type { FinanceActionState } from "@/lib/finance";
+import { sortFinanceAccounts, type FinanceActionState } from "@/lib/finance";
 import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
@@ -54,8 +54,9 @@ export const TripEntryEditor=forwardRef<TripEntryEditorHandle,{
   const plans=data.entries.filter(e=>e.kind==="plan" && e.expense_type===expenseType && !e.reverses_id && !data.entries.some(r=>r.reverses_id===e.id || r.plan_id===e.id));
   const contextual=plans.length===1 ? plans[0] : undefined;
   const [payer,setPayer]=useState(entry?.employee_id ?? (kind==="advance" ? data.travelers.find(v=>v.active)?.employee_id ?? "" : "studio"));
-  const [accountId,setAccountId]=useState(data.entryPayments.find(v=>v.movement_id===entry?.movement_id)?.account_id ?? foundation.accounts.find(v=>!v.archived_at)?.id ?? "");
   const [currency,setCurrency]=useState(entry?.currency ?? contextual?.currency ?? base);
+  const accounts=sortFinanceAccounts(foundation.accounts.filter(v=>!v.archived_at),currency);
+  const [accountId,setAccountId]=useState(data.entryPayments.find(v=>v.movement_id===entry?.movement_id)?.account_id ?? accounts[0]?.id ?? "");
   const [amount,setAmount]=useState(entry?.amount ?? "");
   const [date,setDate]=useState(entry?.financial_date ?? today);
   const [mode,setMode]=useState("record"),[movementId,setMovementId]=useState("");
@@ -129,7 +130,7 @@ export const TripEntryEditor=forwardRef<TripEntryEditorHandle,{
         {cash ? <input type="hidden" name="currency" value={code}/> : <FormField label={t("currency")}><FinanceCurrencySelect name="currency" aria-label={t("currency")} currencies={foundation.currencies} reportingCurrency={base} value={currency} onValueChange={setCurrency}/></FormField>}
         {kind!=="plan" ? <FormField label={kind==="advance" ? t("traveler"):t("paidBy")}><Select aria-label={kind==="advance" ? t("traveler"):t("paidBy")} value={payer} onValueChange={setPayer}>{kind!=="advance" ? <SelectItem value="studio">{t("studioAccount")}</SelectItem>:null}{data.travelers.filter(v=>v.active || v.employee_id===entry?.employee_id).map(v=><SelectItem key={v.employee_id} value={v.employee_id}>{v.employee_name}</SelectItem>)}</Select></FormField>:null}
         {kind!=="plan" && !matched ? <FormField label={f("movements.date")}><DatePicker name="date" aria-label={f("movements.date")} locale={locale} value={date} onValueChange={setDate} min="1900-01-01" max={today} required/></FormField>:<input type="hidden" name="date" value={matched ? movement?.financial_date ?? today : entry?.financial_date ?? today}/>}
-        {cash && !matched ? <FormField label={f("movements.account")}><Select name="accountId" aria-label={f("movements.account")} value={accountId} onValueChange={setAccountId} required>{foundation.accounts.filter(v=>!v.archived_at).map(v=><SelectItem key={v.id} value={v.id}>{v.name} · {v.currency}</SelectItem>)}</Select></FormField>:null}
+        {cash && !matched ? <FormField label={f("movements.account")}><Select name="accountId" aria-label={f("movements.account")} value={accountId} onValueChange={setAccountId} required>{accounts.map(v=><SelectItem key={v.id} value={v.id}>{v.name} · {v.currency}</SelectItem>)}</Select></FormField>:null}
         {matched ? <FormField label={t("existingPayment")}><Select name="movementId" aria-label={t("existingPayment")} value={movementId} onValueChange={setMovementId} required>{data.payments.filter(v=>v.unapplied_amount===v.original_amount || Number(v.unapplied_amount)===Number(v.original_amount) || v.planId===planId).map(v=><SelectItem key={v.id} value={v.id ?? ""}>{v.description} · {v.original_amount} {v.currency}</SelectItem>)}</Select></FormField>:null}
         {kind==="expense" && !entry && choices.length>1 ? <FormField label={t("whichPlan")}><Select aria-label={t("whichPlan")} value={chosenPlan===null ? "choose" : planId || "none"} onValueChange={v=>setChosenPlan(v==="none" ? "":v)}><SelectItem value="choose" disabled>{t("whichPlan")}</SelectItem><SelectItem value="none">{t("unplanned")}</SelectItem>{choices.map(v=><SelectItem key={v.id} value={v.id ?? ""}>{v.label || t(`types.${v.expense_type}`)} · {v.amount} {v.currency}</SelectItem>)}</Select></FormField>:null}
       </div>

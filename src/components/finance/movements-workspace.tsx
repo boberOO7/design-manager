@@ -17,7 +17,7 @@ import { FormField, Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
-import { financeAmountText, financeAmountUnits, formatFinanceAmount } from "@/lib/finance";
+import { financeAmountText, financeAmountUnits, formatFinanceAmount, sortFinanceAccounts } from "@/lib/finance";
 import { FinanceActionForm } from "./finance-action-form";
 import { FinanceCategorySelect } from "./category-select";
 import type { FinanceExpected } from "@/lib/finance-planning";
@@ -51,19 +51,20 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
   const t = useTranslations("Finance.payrollCash");
   const [context, setContext] = useState<{ itemId: string; value: PayrollPayment | null; period?: PayrollPeriod } | null>(null);
   const [error, setError] = useState(false);
+  const paymentCurrency = sortFinanceAccounts(data.accounts.filter(account => !account.archived_at), expected?.currency)[0]?.currency ?? expected?.currency ?? "UAH";
   useEffect(() => {
     let active = true;
-    if (expected?.id && !correction && !refund) loadFinancePayrollPayment(expected.id, today).then(async value => {
+    if (expected?.id && !correction && !refund) loadFinancePayrollPayment(expected.id, today, "nbu", "", paymentCurrency).then(async value => {
       const period = value && expected.certainty === "estimated" ? await loadFinancePayrollPeriod(value.obligationId) : undefined;
       if (value && expected.certainty === "estimated" && !period) throw new Error("Unable to load payroll confirmation.");
       if (active) { setContext({ itemId: expected.id ?? "", value, period: period ?? undefined }); setError(false); }
     }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [expected?.id, expected?.certainty, today, correction, refund]);
+  }, [expected?.id, expected?.certainty, today, correction, refund, paymentCurrency]);
   if (expected?.id && !correction && !refund) {
     if (error) return <p role="alert">{t("loadError")}</p>;
     if (context?.itemId !== expected.id) return <p role="status">{t("loading")}</p>;
-    if (context.value) return <PayrollPaymentForm accounts={data.accounts} today={today} itemId={expected.id} initial={context.value} period={context.period} onSaved={onSaved} onPending={onPending} />;
+    if (context.value) return <PayrollPaymentForm currencies={data.currencies} accounts={data.accounts} today={today} itemId={expected.id} initial={context.value} period={context.period} onSaved={onSaved} onPending={onPending} />;
   }
   return <MovementEntryForm data={data} today={today} transfer={transfer} refund={refund} correction={correction} expected={expected} projectCash={projectCash} onSaved={onSaved} onPending={onPending} />;
 }
@@ -71,14 +72,14 @@ export function EntryForm({ data, today, transfer, refund, correction, expected,
 function MovementEntryForm({ data, today, transfer, refund, correction, expected, projectCash, onSaved, onPending }: { data: Foundation; today: string; transfer: boolean; refund?: FinanceMovementWithEntries; correction?: FinanceMovementWithEntries; expected?:FinanceExpected|null; projectCash?: FinanceProjectCash | null; onSaved: () => void; onPending: (pending: boolean) => void }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
-  const active = data.accounts.filter((account) => !account.archived_at);
+  const active = sortFinanceAccounts(data.accounts.filter(account => !account.archived_at), expected?.currency);
   const originalEntry = correction?.entries.find((entry) => entry.entry_role === "primary");
   const originalDestination = correction?.entries.find((entry) => entry.entry_role === "destination");
   const originalAccount = originalEntry?.account_id ?? refund?.entries.find((entry) => entry.entry_role === "primary")?.account_id;
   const balanceCorrection = correction?.nature === "balance";
   const refundCorrection = correction?.kind === "refund";
   const originalPayload = correction?.request_payload;
-  const payrollCorrection = Boolean(correction && originalPayload && typeof originalPayload === "object" && !Array.isArray(originalPayload) && originalPayload.payrollCreditCurrency === "USD");
+  const payrollCurrency = originalPayload && typeof originalPayload === "object" && !Array.isArray(originalPayload) && typeof originalPayload.payrollCreditCurrency === "string" ? originalPayload.payrollCreditCurrency : null;
   const originalAllocationIntent = originalPayload && typeof originalPayload === "object" && !Array.isArray(originalPayload) && originalPayload.allocationIntent === true;
   const expectedCategory=data.categories.find((category)=>category.id===expected?.category_id);
   const expectedDescription=expected?.description??"";
@@ -219,7 +220,7 @@ function MovementEntryForm({ data, today, transfer, refund, correction, expected
       {currentAmountUnits!==null?<p className="ui-numeric text-xs text-[var(--ui-text-secondary)]">{t("movements.projectCash.unattributed",{amount:financeAmountText(currentAmountUnits>refundTotal?currentAmountUnits-refundTotal:BigInt(0),digits),currency:source?.currency??""})}</p>:null}
       {!refundRowsValid?<p role="alert" className="text-xs text-[var(--ui-danger-text)]">{t("movements.projectCash.invalidRefund")}</p>:null}
     </div>:null}
-    {payrollCorrection ? <div className="space-y-2"><p className="text-xs text-[var(--ui-text-secondary)]">{t("payrollCash.correctionHelp")}</p><div className="flex flex-wrap items-end gap-3"><FormField label={t("payrollCash.rateSource")}><Select name="settlementFxMode" width="content" aria-label={t("payrollCash.rateSource")} value={settlementMode} onValueChange={value => setSettlementMode(value === "manual" ? "manual" : "nbu")}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select></FormField>{settlementMode === "manual" ? <FormField label={t("payrollCash.rate")}><Input className="w-40" name="settlementManualRate" aria-label={t("payrollCash.rate")} inputMode="decimal" value={settlementRate} onChange={event => setSettlementRate(event.target.value)} required /></FormField> : null}</div></div> : null}
+    {payrollCurrency && source?.currency !== payrollCurrency ? <div className="space-y-2"><p className="text-xs text-[var(--ui-text-secondary)]">{t("payrollCash.correctionHelp")}</p><div className="flex flex-wrap items-end gap-3"><FormField label={t("payrollCash.rateSource")}><Select name="settlementFxMode" width="content" aria-label={t("payrollCash.rateSource")} value={settlementMode} onValueChange={value => setSettlementMode(value === "manual" ? "manual" : "nbu")}><SelectItem value="nbu">{t("movements.nbuShort")}</SelectItem><SelectItem value="manual">{t("movements.manualShort")}</SelectItem></Select></FormField>{settlementMode === "manual" ? <FormField label={t("payrollCash.rate", { currency: source?.currency ?? "", salary: payrollCurrency ?? "" })}><Input className="w-40" name="settlementManualRate" aria-label={t("payrollCash.rate", { currency: source?.currency ?? "", salary: payrollCurrency ?? "" })} inputMode="decimal" value={settlementRate} onChange={event => setSettlementRate(event.target.value)} required /></FormField> : null}</div></div> : null}
     <AnimatedDisclosure title={t("movements.description")} defaultOpen={Boolean(correction?.description)}><Textarea name="description" aria-label={t("movements.description")} rows={1} maxLength={2000} defaultValue={correction?.description ?? ""}/></AnimatedDisclosure>
     {transfer ? <FormField label={t("movements.fee", { currency: source?.currency ?? "" })}><Input name="fee" inputMode="decimal" defaultValue={String(correction?.entries.find((entry)=>entry.entry_role==="fee")?.amount ?? "0").replace(/^-/, "")} required /><span className="text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.feeHelp")}</span></FormField> : null}
     {correction ? <p className="text-xs text-[var(--ui-text-muted)]">{t("movements.historyHelp")}</p> : null}

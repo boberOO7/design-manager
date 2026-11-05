@@ -110,3 +110,13 @@ describe("historical Finance FX", () => {
     expect(fetcher).toHaveBeenCalledTimes(4);
   });
 });
+
+it.each(["UAH","USD","PLN","EUR"])("uses identity for %s even while the external provider is down", async currency => {
+  const fetcher=vi.fn().mockRejectedValue(new Error("NBU unavailable"));
+  vi.stubGlobal("fetch",fetcher);
+  try {
+    expect(await resolveFinanceFx(currency,currency,"2026-11-05","nbu","")).toEqual({rate:"1",source:"identity",effectiveDate:"2026-11-05"});
+    expect(await resolveFinanceFxDates(currency,currency,["2026-11-05"])).toEqual(new Map([["2026-11-05","1"]]));
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
+});

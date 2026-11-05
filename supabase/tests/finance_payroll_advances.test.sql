@@ -125,7 +125,7 @@ reset role;
 insert into public.finance_accounts(id,studio_id,name,currency,opening_balance,created_by) values(pg_temp.fid(21),pg_temp.fid(1),'USD bank','USD',0,pg_temp.fid(10));
 set local role authenticated;
 select pg_temp.confirm(226,13,'1200');
-select throws_like($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(227),pg_temp.payout(13),jsonb_build_object('kind','outgoing','date',current_date,'amount','10','accountId',pg_temp.fid(21),'categoryId',pg_temp.cat(),'fx',pg_temp.fx('40')),10)$$,'%finance_payroll_uah_required%','USD piecework cannot bypass UAH cash requirement through generic payment RPC');
+select lives_ok($$select public.record_finance_expected_payment(pg_temp.fid(1),pg_temp.fid(227),pg_temp.payout(13),jsonb_build_object('kind','outgoing','date',current_date,'amount','10','accountId',pg_temp.fid(21),'categoryId',pg_temp.cat(),'fx',pg_temp.fx('40')),10)$$,'confirmed USD piecework accepts a USD account through the generic payment RPC');
 select throws_like($$select public.allocate_finance_payment(pg_temp.fid(1),pg_temp.fid(228),pg_temp.payout(11),(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(224)),1)$$,'%finance_allocation_incompatible%','advance cannot be matched outside its guarded employee settlement flow');
 create temporary table old_payroll_preview as select pg_temp.preview(13) value;
 select pg_temp.advance(229,13,'40','40');
@@ -134,6 +134,82 @@ select public.correct_finance_movement(pg_temp.fid(1),pg_temp.fid(231),(select r
 select is((select obligation_id from public.finance_payroll_cash where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(231))),pg_temp.obligation(13),'corrected actual salary stays tied to its original work month');
 select pg_temp.confirm(232,13,'500','{}',pg_temp.month(-1));
 select is((pg_temp.preview(13,'50',pg_temp.month(-1))->>'advanceAvailable')::numeric,81::numeric,'another month can use explicit advances but cannot consume corrected ordinary salary cash');
+-- Salary credit and actual cash remain separate when payment currencies change.
+reset role;
+insert into public.finance_accounts(id,studio_id,name,currency,account_type,opening_balance,created_by) values
+ (pg_temp.fid(22),pg_temp.fid(1),'EUR bank','EUR','bank',0,pg_temp.fid(10)),
+ (pg_temp.fid(23),pg_temp.fid(1),'JPY cash','JPY','cash',0,pg_temp.fid(10));
+set local role authenticated;
+create function pg_temp.currency_fx(rate text,code text) returns jsonb language sql as $$
+ select pg_temp.fx(rate)||jsonb_build_object('paymentCurrency',code)$$;
+create function pg_temp.currency_preview(employee integer,code text,rate text) returns jsonb language sql as $$
+ select public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(employee),current_date,pg_temp.currency_fx(rate,code))$$;
+create function pg_temp.currency_pay(n integer,employee integer,account integer,code text,amount text,rate text,patch jsonb default '{}') returns uuid language sql as $$
+ select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(n),pg_temp.payout(employee),jsonb_build_object(
+ 'accountId',pg_temp.fid(account),'date',current_date,'amount',amount,'note','Currency salary payment',
+ 'payrollFx',pg_temp.currency_fx(rate,code),'digest',pg_temp.currency_preview(employee,code,rate)->>'digest')||patch)$$;
+select pg_temp.salary(400,14,jsonb_build_object('currency','USD','ratePerM2','6'));
+select pg_temp.confirm(401,14,'1000');
+select public.record_finance_payroll_advance(pg_temp.fid(1),pg_temp.fid(402),jsonb_build_object(
+ 'scheduleId',pg_temp.schedule(14),'currency','USD','accountId',pg_temp.fid(21),'date',current_date,'amount','100',
+ 'note','USD cash advance','payrollFx',jsonb_build_object('paymentCurrency','USD')));
+select pg_temp.advance(403,14,'8000','40');
+select is((pg_temp.currency_preview(14,'USD','1')->>'advanceUsed')::numeric,300::numeric,'USD and UAH advances combine as USD salary credit');
+select is((pg_temp.currency_preview(14,'USD','1')->>'cashDue')::numeric,700::numeric,'USD payment needs no conversion of the remaining salary');
+select is((public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(14),current_date,jsonb_build_object('paymentCurrency','USD'))->>'rate')::numeric,1::numeric,'direct USD preview needs no external quote');
+select isnt(pg_temp.currency_preview(14,'USD','1')->>'digest',pg_temp.currency_preview(14,'UAH','50')->>'digest','payment currency is covered by the reviewed digest');
+-- Applying only existing credit does not exchange cash or require today's FX.
+create temporary table credit_only_submission as select jsonb_build_object(
+ 'date',current_date,'amount','0','note','Apply frozen advances',
+ 'payrollFx',jsonb_build_object('paymentCurrency','EUR','creditOnly',true),
+ 'digest',public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(14),current_date,jsonb_build_object('paymentCurrency','EUR','creditOnly',true))->>'digest') input,
+ (select count(*) from public.finance_movements where studio_id=pg_temp.fid(1)) movements_before;
+select is((public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(14),current_date,jsonb_build_object('paymentCurrency','EUR','creditOnly',true))->>'cashDue'),'0','partial credit-only preview needs no current EUR rate');
+select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(416),pg_temp.payout(14),(select input from credit_only_submission));
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(14)),700::numeric,'frozen USD 300 credit settles without new cash or FX');
+select is((select count(*) from public.finance_movements where studio_id=pg_temp.fid(1)),(select movements_before from credit_only_submission),'applying credit creates no cash movement');
+select public.record_finance_payroll_payment(pg_temp.fid(1),pg_temp.fid(416),pg_temp.payout(14),(select input from credit_only_submission));
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(14)),700::numeric,'credit-only retry does not consume credit twice');
+select throws_like($$select pg_temp.currency_pay(404,14,20,'USD','200','1')$$,'%finance_input_invalid%','account must match the reviewed payment currency');
+select throws_like($$select pg_temp.currency_pay(404,14,21,'USD','700.01','1')$$,'%finance_overallocation%','USD overpayment is rejected');
+select throws_like($$select pg_temp.currency_pay(404,14,21,'USD','0.001','1')$$,'%finance_amount_invalid%','account minor units are enforced');
+select pg_temp.currency_pay(404,14,21,'USD','200','1');
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(14)),500::numeric,'mixed advances and partial USD cash leave exactly USD 500');
+select is((select sum(payment_amount) from public.finance_allocations where expected_item_id=pg_temp.payout(14) and payment_currency='USD'),300::numeric,'USD allocations retain actual USD amounts');
+select is((select sum(payment_amount) from public.finance_allocations where expected_item_id=pg_temp.payout(14) and payment_currency='UAH'),8000::numeric,'UAH advance retains actual UAH amount');
+select is((select credit_source from public.finance_payroll_cash where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(404))),'identity','USD salary paid in USD records an identity rate');
+select pg_temp.currency_pay(405,14,22,'EUR','450','0.9');
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(14)),0::numeric,'EUR payment settles the USD remainder');
+select is((select payment_currency from public.finance_allocations where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(405))),'EUR','allocation stores actual EUR payment currency');
+select is((private.finance_labor_source(pg_temp.fid(1),pg_temp.obligation(14))->>'knownCost')::numeric,1000::numeric,'multiple cash currencies do not duplicate accrued salary');
+-- Correcting cash keeps its employee and currency credit, including a currency change.
+select public.record_finance_payroll_advance(pg_temp.fid(1),pg_temp.fid(406),jsonb_build_object(
+ 'scheduleId',pg_temp.schedule(14),'currency','USD','accountId',pg_temp.fid(21),'date',current_date,'amount','50',
+ 'note','USD advance','payrollFx',jsonb_build_object('paymentCurrency','USD')));
+select public.correct_finance_movement(pg_temp.fid(1),pg_temp.fid(407),(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(406)),
+ jsonb_build_object('kind','outgoing','date',current_date,'accountId',pg_temp.fid(21),'amount','100','categoryId',pg_temp.cat(),'description','Correct USD advance'));
+select is((select credit_amount from public.finance_payroll_cash where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(407))),100::numeric,'same-currency USD correction needs no FX');
+select throws_like($$select public.correct_finance_movement(pg_temp.fid(1),pg_temp.fid(408),(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(407)),
+ jsonb_build_object('kind','outgoing','date',current_date,'accountId',pg_temp.fid(22),'amount','90','categoryId',pg_temp.cat(),'description','Change advance currency'))$$,'%finance_fx_required%','currency change cannot reuse an incompatible frozen rate');
+select public.correct_finance_movement(pg_temp.fid(1),pg_temp.fid(408),(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(407)),
+ jsonb_build_object('kind','outgoing','date',current_date,'accountId',pg_temp.fid(22),'amount','90','categoryId',pg_temp.cat(),'description','Change advance currency','payrollFx',pg_temp.currency_fx('0.9','EUR')));
+select is((select credit_amount from public.finance_payroll_cash where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(408))),100::numeric,'EUR correction preserves USD credit at its explicit rate');
+select public.record_finance_movement(pg_temp.fid(1),pg_temp.fid(409),jsonb_build_object('kind','refund','relatedMovementId',(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(408)),'accountId',pg_temp.fid(22),'date',current_date,'amount','45'));
+select is((select credit_available from public.finance_payroll_credit_availability where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(408))),50::numeric,'EUR refund removes the correct frozen USD credit');
+-- Inverse conversion also supports a UAH salary paid from USD.
+select pg_temp.salary(410,15,jsonb_build_object('payMethod','fixed','ratePerM2','','amount','2000','employeePayout','2000'));
+select pg_temp.currency_pay(411,15,21,'USD','40','0.02');
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(15)),0::numeric,'USD 40 at 0.02 USD per UAH settles UAH 2000');
+-- Zero-decimal account precision is checked before cash is posted.
+select throws_like($$select pg_temp.currency_pay(413,14,23,'JPY','1.5','150')$$,'%finance_amount_invalid%','JPY fractional payment is rejected');
+
+select pg_temp.confirm(417,14,'1050');
+select is((public.get_finance_payroll_payment(pg_temp.fid(1),pg_temp.payout(14),current_date,jsonb_build_object('paymentCurrency','UAH'))->>'cashDue'),'0','fully covered salary automatically previews zero cash without current FX');
+select pg_temp.confirm(414,14,'1100');
+select pg_temp.currency_pay(415,14,23,'JPY','7500','150');
+select is((select remaining_amount from public.finance_expected_balances where id=pg_temp.payout(14)),0::numeric,'zero-decimal JPY cash and frozen EUR advance settle the USD remainder');
+select is((select payment_amount from public.finance_allocations where movement_id=(select result_id from public.finance_planning_requests where request_id=pg_temp.fid(415))),7500::numeric,'JPY allocation preserves native integer cash');
+
 select throws_like($$insert into public.finance_payroll_cash(studio_id,movement_id,employee_id,credit_currency,credit_amount,credit_rate,credit_source,created_by) values(pg_temp.fid(1),pg_temp.fid(999),pg_temp.fid(13),'USD',1,40,'manual',pg_temp.fid(10))$$,'%permission denied%','direct employee cash writes denied');
 select throws_like($$update public.finance_payroll_cash set credit_amount=1 where studio_id=pg_temp.fid(1)$$,'%permission denied%','frozen advance amounts cannot be edited directly');
 select throws_like($$select pg_temp.pay(218,11,'1','50',pg_temp.month(),jsonb_build_object('digest',repeat('0',32)))$$,'%finance_payroll_preview_stale%','stale salary or advance snapshot rejected');

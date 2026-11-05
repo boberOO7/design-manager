@@ -8,6 +8,16 @@ export type FinanceSettings = Database["public"]["Tables"]["finance_settings"]["
 export type FinanceAccount = NonNullable<Awaited<ReturnType<typeof import("@/data/queries/finance").getFinanceData>>>["accounts"][number];
 export type FinanceActionState = { status: "idle" | "success" | "error"; message?: string; id?: string };
 
+export function sortFinanceAccounts<T extends Pick<Database["public"]["Tables"]["finance_accounts"]["Row"], "currency">>(accounts: readonly T[], paymentCurrency?: string | null): T[] {
+  const currencies = ["UAH", "USD", "PLN", "EUR"];
+  const priority = (currency: string) => {
+    if (currency === paymentCurrency) return -1;
+    const index = currencies.indexOf(currency);
+    return index < 0 ? currencies.length : index;
+  };
+  return [...accounts].sort((left, right) => priority(left.currency) - priority(right.currency) || left.currency.localeCompare(right.currency));
+}
+
 export function financeSettingsSchema(currencies: FinanceCurrency[]) {
   return z.object({
     baseCurrency: z.string().refine((code) => currencies.some((currency) => currency.code === code)),

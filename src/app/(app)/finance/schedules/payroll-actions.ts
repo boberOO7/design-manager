@@ -48,18 +48,18 @@ export async function loadFinancePayrollCash(scheduleId: string, date = getKyivD
   return payrollCashSchema.parse(data);
 }
 
-export async function loadFinancePayrollPayment(itemId: string, date: string, mode: "nbu" | "manual" = "nbu", manualRate = "") {
+export async function loadFinancePayrollPayment(itemId: string, date: string, mode: "nbu" | "manual" = "nbu", manualRate = "", paymentCurrency = "UAH", creditOnly = false) {
   const admin = await getActiveStudioAdmin();
-  if (!admin || !z.uuid().safeParse(itemId).success || !z.iso.date().safeParse(date).success || date > getKyivDateOnly()) return null;
+  if (!admin || !z.uuid().safeParse(itemId).success || !z.iso.date().safeParse(date).success || date > getKyivDateOnly() || !/^[A-Z]{3}$/.test(paymentCurrency)) return null;
   const client = await createClient();
-  const { data, error } = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: itemId, p_date: date });
+  const { data, error } = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: itemId, p_date: date, p_fx: { paymentCurrency, ...(creditOnly ? { creditOnly: true } : {}) } });
   if (error) throw new Error("Unable to load salary payment.", { cause: error });
   if (!data) return null;
   const context = payrollPaymentSchema.parse(data);
-  if (context.currency === "UAH") return context;
-  const fx = await resolveFinanceFx(context.currency, "UAH", date, mode, manualRate).catch(() => null);
+  if (context.currency === paymentCurrency || context.cashDue !== null && Number(context.cashDue) === 0) return context;
+  const fx = await resolveFinanceFx(context.currency, paymentCurrency, date, mode, manualRate).catch(() => null);
   if (!fx) return context;
-  const quoted = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: itemId, p_date: date, p_fx: fx });
+  const quoted = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: itemId, p_date: date, p_fx: { ...fx, paymentCurrency } });
   if (quoted.error) throw new Error("Unable to calculate salary payment.", { cause: quoted.error });
   return payrollPaymentSchema.parse(quoted.data);
 }
@@ -89,10 +89,12 @@ export async function recordFinancePayrollAdvance(_state: FinanceActionState, fo
   const client = await createClient();
   const terms = await client.from("finance_schedule_terms").select("currency").eq("studio_id", admin.studio_id).eq("schedule_id", input.scheduleId).lte("effective_from", input.date).order("effective_from", { ascending: false }).order("revision", { ascending: false }).limit(1).maybeSingle();
   if (terms.error || !terms.data || terms.data.currency !== input.currency) return { status: "error", message: t("schedules.errors.invalid") };
-  const payrollFx = await resolveFinanceFx(terms.data.currency, "UAH", input.date, input.mode, input.manualRate).catch(() => null);
+  const account = foundation.accounts.find(account => account.id === input.accountId && !account.archived_at);
+  if (!account || account.currency !== input.paymentCurrency) return { status: "error", message: t("schedules.errors.invalid") };
+  const payrollFx = await resolveFinanceFx(terms.data.currency, account.currency, input.date, input.mode, input.manualRate).catch(() => null);
   if (!payrollFx) return { status: "error", message: t("movements.errors.fx") };
-  const fx = await resolveFinanceFx("UAH", foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null);
-  const { error } = await client.rpc("record_finance_payroll_advance", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: { ...input, note: input.note || t("payrollCash.advanceDescription"), fx, payrollFx, submission: input } });
+  const fx = await resolveFinanceFx(input.paymentCurrency, foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null);
+  const { error } = await client.rpc("record_finance_payroll_advance", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_input: { ...input, note: input.note || t("payrollCash.advanceDescription"), fx, payrollFx: { ...payrollFx, paymentCurrency: account.currency }, submission: input } });
   return payrollCashResult(error?.message ?? null, t);
 }
 
@@ -105,16 +107,20 @@ export async function recordFinancePayrollPayment(_state: FinanceActionState, fo
   const prior = await priorPayrollCashRequest(input.requestId, input, "payroll_payment", admin.studio_id);
   if (prior !== null) return payrollCashResult(prior ? null : "finance_request_conflict", t);
   if (input.date > getKyivDateOnly()) return { status: "error", message: t("schedules.errors.invalid") };
-  const client = await createClient();
-  const context = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: input.itemId, p_date: input.date });
-  if (context.error || !context.data) return { status: "error", message: t("schedules.errors.invalid") };
-  const salary = payrollPaymentSchema.parse(context.data);
-  const payrollFx = salary.currency === "UAH" ? null : await resolveFinanceFx(salary.currency, "UAH", input.date, input.mode, input.manualRate).catch(() => null);
-  if (salary.currency !== "UAH" && !payrollFx) return { status: "error", message: t("movements.errors.fx") };
   const foundation = await getFinanceData();
   if (!foundation?.settings?.finalized_at) return { status: "error", message: t("movements.errors.setup") };
-  const fx = await resolveFinanceFx("UAH", foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null);
-  const { error } = await client.rpc("record_finance_payroll_payment", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_item_id: input.itemId, p_input: { ...input, ...(input.earningDigest ? { earningReason: t("payrollEarning.defaultReason") } : {}), payrollFx, fx, submission: input } });
+  const account = foundation.accounts.find(account => account.id === input.accountId && !account.archived_at);
+  if ((Number(input.amount) > 0 && !account) || (account && account.currency !== input.paymentCurrency)) return { status: "error", message: t("schedules.errors.invalid") };
+  if (!foundation.currencies.some(currency => currency.code === input.paymentCurrency)) return { status: "error", message: t("schedules.errors.invalid") };
+  const client = await createClient();
+  const context = await client.rpc("get_finance_payroll_payment", { p_studio_id: admin.studio_id, p_item_id: input.itemId, p_date: input.date, p_fx: { paymentCurrency: input.paymentCurrency, ...(Number(input.amount) === 0 ? { creditOnly: true } : {}) } });
+  if (context.error || !context.data) return { status: "error", message: t("schedules.errors.invalid") };
+  const salary = payrollPaymentSchema.parse(context.data);
+  const creditOnly = Number(input.amount) === 0 && salary.cashDue !== null && Number(salary.cashDue) === 0;
+  const payrollFx = creditOnly ? { paymentCurrency: input.paymentCurrency, creditOnly: true } : await resolveFinanceFx(salary.currency, input.paymentCurrency, input.date, input.mode, input.manualRate).catch(() => null);
+  if (!payrollFx) return { status: "error", message: t("movements.errors.fx") };
+  const fx = Number(input.amount) > 0 ? await resolveFinanceFx(input.paymentCurrency, foundation.settings.base_currency, input.date, defaultFinanceReportingSource, "").catch(() => null) : null;
+  const { error } = await client.rpc("record_finance_payroll_payment", { p_studio_id: admin.studio_id, p_request_id: input.requestId, p_item_id: input.itemId, p_input: { ...input, ...(input.earningDigest ? { earningReason: t("payrollEarning.defaultReason") } : {}), payrollFx: { ...payrollFx, paymentCurrency: input.paymentCurrency }, fx, submission: input } });
   if (!error && input.earningDigest) {
     revalidatePath("/calendar");
     revalidatePath("/statistics");

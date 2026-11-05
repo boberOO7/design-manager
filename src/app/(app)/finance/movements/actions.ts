@@ -62,16 +62,18 @@ export async function saveFinanceMovement(_previous: FinanceActionState, form: F
       const owned = await client.from("finance_payroll_cash").select("credit_currency,credit_rate,credit_source").eq("studio_id", admin.studio_id).eq("movement_id", input.movementId).maybeSingle();
       if (owned.error) return { status: "error", message: t("errors.save") };
       if (owned.data) {
-        if (account.currency !== "UAH") return { status: "error", message: t("errors.payrollUahRequired") };
         payrollCreditCurrency = owned.data.credit_currency;
-        const original = await client.from("finance_movements").select("financial_date").eq("studio_id", admin.studio_id).eq("id", input.movementId).maybeSingle();
+        const original = await client.from("finance_payment_availability").select("financial_date,currency").eq("studio_id", admin.studio_id).eq("id", input.movementId).maybeSingle();
         if (original.error || !original.data) return { status: "error", message: t("errors.save") };
         try {
-          payrollFx = input.settlementFxMode === "manual" && input.settlementManualRate
-            ? await resolveFinanceFx(payrollCreditCurrency, "UAH", input.date, "manual", input.settlementManualRate)
-            : input.date === original.data.financial_date
+          const rate = payrollCreditCurrency === account.currency
+            ? await resolveFinanceFx(payrollCreditCurrency, account.currency, input.date, "nbu", "")
+            : input.settlementFxMode === "manual" && input.settlementManualRate
+            ? await resolveFinanceFx(payrollCreditCurrency, account.currency, input.date, "manual", input.settlementManualRate)
+            : input.date === original.data.financial_date && account.currency === original.data.currency
               ? { rate: String(owned.data.credit_rate), source: owned.data.credit_source, effectiveDate: input.date }
-              : await resolveFinanceFx(payrollCreditCurrency, "UAH", input.date, "nbu", "");
+              : await resolveFinanceFx(payrollCreditCurrency, account.currency, input.date, "nbu", "");
+          payrollFx = { ...rate, paymentCurrency: account.currency };
         } catch { return { status: "error", message: t("errors.fx") }; }
       }
     }
