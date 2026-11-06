@@ -481,6 +481,9 @@
     }
   },
   "Navigation": {
+    "sidebarVariant": "Sidebar layout",
+    "sidebarClassic": "Classic",
+    "sidebarNew": "New",
     "statistics": "Statistics",
     "finance": "Finance",
     "home": "StudioFlow home",

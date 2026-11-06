@@ -391,7 +391,7 @@ function TaskCardContent({
   const priorityIndicator = <Tooltip content={priority(task.priority)}><span role="img" aria-label={`${t("priority")}: ${priority(task.priority)}`} tabIndex={isOverlay ? undefined : 0} className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]"><TaskPriorityIcon priority={task.priority} /></span></Tooltip>;
 
   return (
-    <div className={cn("relative rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] transition-[border-color,box-shadow]", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected && "border-[var(--ui-focus)]")}>
+    <div className={cn(styles.taskCard, "relative rounded-xl border border-[var(--ui-border)] transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none", compact ? "p-2" : "p-3", isOverlay && "scale-[1.02] shadow-xl", isSelected ? "border-[var(--ui-focus)]" : "hover:border-[var(--ui-border-strong)]")}>
       {isSelected ? <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-action-primary)] text-[var(--ui-action-primary-text)] shadow-sm"><Check className="size-3" /></span> : null}
       <div className="flex min-w-0 items-start gap-1.5">
         {showGrip ? <GripVertical className="mt-0.5 size-4 shrink-0 text-[var(--ui-text-subtle)]" aria-hidden="true" /> : null}
@@ -400,9 +400,9 @@ function TaskCardContent({
       <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] text-xs leading-4", compact ? "mt-1.5 items-center gap-1.5" : "mt-2 items-center gap-2")}>
         <div className="flex min-w-0 items-center gap-1.5 text-[var(--ui-text-muted)]">
           {hasTaskParticipants ? <span className="flex shrink-0 -space-x-1.5" aria-label={[task.assignee, ...task.collaborators].filter(Boolean).map((person) => person!.full_name).join(", ")}>
-            {task.assignee ? <Tooltip content={task.assignee.full_name}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" decorative /></span></Tooltip> : null}
-            {task.collaborators.slice(0, visibleCollaboratorCount).map((collaborator) => <Tooltip content={collaborator.full_name} key={collaborator.id}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--ui-surface)]"><UserAvatar imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" decorative /></span></Tooltip>)}
-            {task.collaborators.length > visibleCollaboratorCount ? <span className="inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[9px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--ui-surface)]">+{task.collaborators.length - visibleCollaboratorCount}</span> : null}
+            {task.assignee ? <Tooltip content={task.assignee.full_name}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--board-card-surface)]"><UserAvatar imageUrl={task.assignee.avatar_url} name={task.assignee.full_name} size="boardCard" decorative /></span></Tooltip> : null}
+            {task.collaborators.slice(0, visibleCollaboratorCount).map((collaborator) => <Tooltip content={collaborator.full_name} key={collaborator.id}><span tabIndex={0} className="rounded-full ring-2 ring-[var(--board-card-surface)]"><UserAvatar imageUrl={collaborator.avatar_url} name={collaborator.full_name} size="boardCard" decorative /></span></Tooltip>)}
+            {task.collaborators.length > visibleCollaboratorCount ? <span className="inline-flex size-5 items-center justify-center rounded-full bg-[var(--ui-surface-strong)] text-[9px] font-semibold text-[var(--ui-text-secondary)] ring-2 ring-[var(--board-card-surface)]">+{task.collaborators.length - visibleCollaboratorCount}</span> : null}
           </span> : <UserAvatar decorative size="boardCard" />}
           <span className="truncate">{task.assignee?.full_name ?? t("unassigned")}</span>
           {compact && progress ? <span className="ui-numeric shrink-0 whitespace-nowrap font-medium text-[var(--ui-text-secondary)]">{progress.kind === "checklist"
@@ -533,10 +533,10 @@ function StatusColumnHeader({ canBulkDrag, columnId, label, status, stage, taskI
   const columnStyle = getTaskStatusColumnStyle(status);
 
   return (
-    <div className={cn("mb-2 grid min-h-11 min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-1.5 rounded-lg border px-2 py-2", columnStyle.headerClassName)}>
+    <div className={cn("mb-2 grid min-h-11 min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-1.5 rounded-lg border px-2 py-2", columnStyle.headerClassName, styles.columnHeader)}>
       <BulkColumnDragHandle columnId={columnId} disabled={!canBulkDrag} label={label} stage={stage} status={status} taskIds={taskIds} />
       <h3 id={`column-${columnId}`} className="min-w-0 break-words text-sm font-semibold">{label}</h3>
-      <span className={cn("ui-numeric justify-self-end rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount))}>{taskCount}</span>
+      <span data-empty={taskCount === 0} className={cn("ui-numeric justify-self-end rounded-full px-1.5 py-0.5 text-xs font-medium leading-4", getTaskStatusCountBadgeClassName(status, taskCount), styles.columnCount)}>{taskCount}</span>
     </div>
   );
 }
@@ -602,17 +602,17 @@ function BoardColumn({
       ref={ref}
       aria-labelledby={`column-${columnId}`}
       className={cn(
-        "flex min-h-72 min-w-0 flex-col rounded-xl border p-3 transition-[border-color,background-color,box-shadow]",
+        "flex min-h-72 min-w-0 flex-col rounded-xl border p-3 transition-[border-color,background-color,box-shadow] duration-200 motion-reduce:transition-none",
         isHighlighted
           ? "border-[var(--ui-focus)] bg-[var(--ui-surface-strong)] ring-2 ring-[var(--ui-focus)] shadow-md"
-          : "border-[var(--ui-border)] bg-[var(--ui-surface-muted)]",
+          : styles.columnSurface,
       )}
     >
       <StatusColumnHeader canBulkDrag={canBulkDrag} columnId={columnId} label={label} status={status} stage={stage} taskIds={tasks.map((task) => task.id)} taskCount={tasks.length} />
       {isHighlighted ? <p className="mb-2 rounded-lg border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 py-1.5 text-center text-xs font-medium leading-4 text-[var(--ui-text-secondary)]">{t("releaseToMove", { status: label })}</p> : null}
       <div className="flex flex-1 flex-col gap-2">
         {tasks.length === 0 ? (
-          <div className="flex min-h-28 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-center text-sm text-[var(--ui-text-muted)]">{t("noTasks")}</div>
+          <div className={cn("flex min-h-28 flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-4 text-center text-sm text-[var(--ui-text-muted)]", styles.emptyColumn)}>{t("noTasks")}</div>
         ) : tasks.map((task) => {
           const canDrag = canDragTaskOnBoard({ task, currentUserId, isAdmin: canManageTasks, isProjectReadOnly, correctionsReadOnly });
           const isSelected = selectedTaskIds.has(task.id);
@@ -626,35 +626,40 @@ function BoardColumn({
   );
 }
 
-// Keep the existing grid transition, then release cards and DnD registrations.
+// Normalize travel time across stage sizes; opening ramps up, closing responds immediately.
 function StageContent({ children, expanded, keepMounted, stage }: { children: ReactNode; expanded: boolean; keepMounted: boolean; stage: TaskStage }) {
   const nodeRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
+  const [initialHeight] = useState(expanded ? "auto" : "0px");
   const [retained, setRetained] = useState(expanded);
   useLayoutEffect(() => {
     const node = nodeRef.current;
-    if (!node) return;
+    const content = contentRef.current;
+    if (!node || !content) return;
     let cancelled = false;
-    if (expanded) {
-      if (!retained) {
-        // Newly mounted content needs a measured zero-height starting frame.
-        node.style.transition = "none";
-        node.style.gridTemplateRows = "0fr";
-        node.getBoundingClientRect();
-        node.style.removeProperty("transition");
-        node.style.removeProperty("grid-template-rows");
-      }
-      queueMicrotask(() => { if (!cancelled) setRetained(true); });
-    } else if (!keepMounted) {
-      // Empty/reduced-motion transitions resolve immediately; cancelled transitions
-      // also release content unless a newer expand/drag has superseded this effect.
-      void Promise.allSettled(node.getAnimations().map((animation) => animation.finished)).then(() => {
-        if (!cancelled) setRetained(false);
-      });
-    }
+    const from = node.getBoundingClientRect().height;
+    const to = expanded ? content.scrollHeight : 0;
+    node.style.transition = "none";
+    node.style.height = `${from}px`;
+    node.getBoundingClientRect();
+    node.style.removeProperty("transition");
+    // Average 3 px/ms in either direction, including a partial-toggle reversal.
+    // Tall stages intentionally take longer instead of racing through more pixels.
+    node.style.transitionDuration = initializedRef.current ? `${Math.abs(to - from) / 3}ms` : "0ms";
+    node.style.height = `${to}px`;
+    initializedRef.current = true;
+    if (expanded) queueMicrotask(() => { if (!cancelled) setRetained(true); });
+    void Promise.allSettled(node.getAnimations().map((animation) => animation.finished)).then(() => {
+      if (cancelled) return;
+      // Natural height keeps edits, wrapping and presentation switches responsive.
+      node.style.height = expanded ? "auto" : "0px";
+      if (!expanded && !keepMounted) setRetained(false);
+    });
     return () => { cancelled = true; };
-  }, [expanded, keepMounted, retained]);
-  return <div ref={nodeRef} id={`project-stage-${stage}`} aria-hidden={!expanded} inert={!expanded && !keepMounted} className={cn("grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none", expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
-    <div className="min-h-0 overflow-hidden">{expanded || retained ? children : null}</div>
+  }, [expanded, keepMounted]);
+  return <div ref={nodeRef} id={`project-stage-${stage}`} aria-hidden={!expanded} inert={!expanded && !keepMounted} style={{ height: initialHeight }} className={cn("overflow-hidden transition-[height] motion-reduce:transition-none", expanded ? "ease-in-out" : "ease-[cubic-bezier(0.23,1,0.32,1)]")}>
+    <div ref={contentRef} className="overflow-hidden">{expanded || retained ? children : null}</div>
   </div>;
 }
 
@@ -722,6 +727,7 @@ export function ProjectTaskBoard({
     { value: "weighted", icon: Scale },
   ] satisfies Array<{ value: StageProgressMethod; icon: typeof Equal }>;
   const boardActions = locale === "uk" ? "Дії дошки" : "Board actions";
+  const minimalistBoardLabel = locale === "uk" ? "Мінімалістичний вигляд" : "Minimalist appearance";
   const compactTaskCards = locale === "uk" ? "Компактні картки" : "Compact task cards";
   const [localTasks, setLocalTasks] = useState(tasks);
   useEffect(() => { onTasksChange?.(localTasks); }, [localTasks, onTasksChange]);
@@ -762,6 +768,20 @@ export function ProjectTaskBoard({
   const compactCardsKey = `project-task-board:compact-cards:${currentUserId}`;
   const [compactCards, setCompactCards] = useState(false);
   const [compactCardsReady, setCompactCardsReady] = useState(false);
+  const appearanceKey = `project-task-board:appearance:${currentUserId}`;
+  const [minimalistBoard, setMinimalistBoard] = useState(false);
+  const [appearanceReady, setAppearanceReady] = useState(false);
+
+  useLayoutEffect(() => {
+    let saved = false;
+    try { saved = window.localStorage.getItem(appearanceKey) === "minimalist"; } catch { /* Use the default when storage is unavailable. */ }
+    queueMicrotask(() => { setMinimalistBoard(saved); setAppearanceReady(true); });
+  }, [appearanceKey]);
+
+  useEffect(() => {
+    if (!appearanceReady) return;
+    try { window.localStorage.setItem(appearanceKey, minimalistBoard ? "minimalist" : "classic"); } catch { /* The toggle still works without persistence. */ }
+  }, [appearanceKey, appearanceReady, minimalistBoard]);
 
   useLayoutEffect(() => {
     try {
@@ -1415,7 +1435,7 @@ export function ProjectTaskBoard({
   }
 
   return (
-    <section aria-labelledby="project-board-heading">
+    <section aria-labelledby="project-board-heading" data-board-appearance={minimalistBoard ? "minimalist" : "classic"} className={minimalistBoard ? styles.minimalBoard : undefined}>
       <div className={cn("mb-4", visibleStages ? directionWorkspaceHeaderClass : "flex flex-wrap items-center justify-between gap-4")}>
         <div>
           <h2 id="project-board-heading" className={visibleStages ? directionWorkspaceHeadingClass : "font-semibold text-[var(--ui-text)]"}>{visibleStages ? t("directionBoard") : t("board")}</h2>
@@ -1437,6 +1457,10 @@ export function ProjectTaskBoard({
                 <button type="button" role="menuitemcheckbox" aria-checked={compactCards} onClick={() => setCompactCards((current) => !current)} className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
                   <Check className={cn("size-4 shrink-0", compactCards ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />
                   {compactTaskCards}
+                </button>
+                <button type="button" role="menuitemcheckbox" aria-checked={minimalistBoard} onClick={() => setMinimalistBoard((current) => !current)} className="flex min-h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)]">
+                  <Check className={cn("size-4 shrink-0", minimalistBoard ? "text-[var(--ui-text)]" : "invisible")} aria-hidden="true" />
+                  {minimalistBoardLabel}
                 </button>
               </Popover.Content>
             </Popover.Portal>
@@ -1466,7 +1490,7 @@ export function ProjectTaskBoard({
               + groupsByStage[stage].done.length;
             const progress = isWorkingStage(stage) ? stageProgress[stage] : null;
             return (
-              <section key={stage} className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface-muted)]">
+              <section key={stage} className={cn(styles.stagePanel, "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)]")}>
                 <div className={cn("flex min-h-12 cursor-pointer items-center gap-2 px-4", stageHeaderVariant === "wash" && "rounded-xl", styles.stageHeader)} data-stage-expanded={isExpanded} onClick={() => toggleStage(stage)}>
                   {showProgress && progress ? stageHeaderVariant === "hairline" ? <div className={styles.stageHairline} role="progressbar" aria-label={`${stageName(stage)} ${progress.progressPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent}>
                     <span aria-hidden="true" className={styles.stageProgressFill} style={{ width: `${progress.progressPercent}%` }} />
@@ -1562,7 +1586,7 @@ export function ProjectTaskBoard({
             );
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} className={minimalistBoard ? styles.minimalBoard : undefined}>
           {() => {
             if (activeTask) return <TaskCardContent compact={compactCards} task={activeTask} isOverlay showGrip />;
             if (!activeBulkDrag) return null;

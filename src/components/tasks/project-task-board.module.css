@@ -1,4 +1,20 @@
-.stageHeader { position: relative; isolation: isolate; }
+.stagePanel { background: var(--ui-surface-subtle); }
+.stageHeader { position: relative; isolation: isolate; border-radius: var(--ui-radius-panel) var(--ui-radius-panel) 0 0; background: var(--ui-surface-muted); }
+.stageHeader[data-stage-expanded="false"] { border-radius: var(--ui-radius-panel); }
+.columnSurface {
+  background: color-mix(in srgb, var(--ui-surface-muted) 70%, var(--ui-surface-strong));
+  border-color: color-mix(in srgb, var(--ui-border) 60%, var(--ui-border-strong));
+}
+.taskCard { --board-card-surface: var(--ui-surface); background: var(--board-card-surface); }
+.minimalBoard .stageHeader { background: var(--ui-surface-subtle); }
+.minimalBoard .columnSurface { background: var(--ui-surface-muted); border-color: transparent; }
+.minimalBoard .columnHeader { margin-bottom: 12px; padding: 0 4px 8px; border: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 0; background: transparent; }
+.minimalBoard .columnCount { min-width: 24px; border: 0; border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); text-align: center; }
+.minimalBoard .columnCount[data-empty="true"] { color: var(--ui-text-secondary); background: transparent; opacity: 1; }
+.minimalBoard .emptyColumn { flex: none; border-color: var(--ui-border); background: transparent; font-size: 12px; color: var(--ui-text-secondary); }
+:global(:root[data-theme="dark"]) .minimalBoard .stagePanel { background: var(--ui-page); }
+:global(:root[data-theme="dark"]) .minimalBoard .columnSurface { background: var(--ui-surface); }
+:global(:root[data-theme="dark"]) .minimalBoard .taskCard { --board-card-surface: var(--ui-surface-muted); }
 .stageHeader > :not(.stageHairline):not(.stageWash) { position: relative; z-index: 1; }
 .stageHairline, .stageWash { position: absolute; pointer-events: none; }
 .stageHairline { bottom: -1px; left: calc(var(--ui-radius-panel) - 1px); right: calc(var(--ui-radius-panel) - 1px); z-index: 2; height: 2px; border-radius: 999px; background: var(--ui-border-strong); transition: left 200ms ease-out, right 200ms ease-out; }

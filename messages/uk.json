@@ -481,6 +481,9 @@
     }
   },
   "Navigation": {
+    "sidebarVariant": "Вигляд бічної панелі",
+    "sidebarClassic": "Класичний",
+    "sidebarNew": "Новий",
     "statistics": "Статистика",
     "finance": "Фінанси",
     "home": "На головну StudioFlow",

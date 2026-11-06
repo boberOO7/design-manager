@@ -62,12 +62,14 @@ function stageContent(page: Page, stage = 1) { return page.locator(`#project-sta
 function column(page: Page, columnId: string, stage = 1) { return stageContent(page, stage).locator(`section[aria-labelledby="column-${columnId}"]`); }
 function card(page: Page, title: string) { return page.locator('[data-task-card]').filter({ has: page.getByRole('heading', { name: title, exact: true }) }); }
 async function sampleToggle(control: Locator) {
+  await expect.poll(() => control.evaluate((button) => document.getElementById(button.getAttribute('aria-controls')!)?.style.transitionDuration ?? '')).not.toBe('');
   return control.evaluate(async (button) => {
     const content = document.getElementById(button.getAttribute('aria-controls')!); if (!content || !(button instanceof HTMLElement)) throw Error('Missing stage');
-    const frames: Array<{ time: number; height: number; cards: number }> = [];
+    const frames: Array<{ time: number; height: number; cards: number; duration: number }> = [];
+    frames.push({ time: 0, height: content.getBoundingClientRect().height, cards: content.querySelectorAll('[data-task-card]').length, duration: Number.parseFloat(content.style.transitionDuration) });
     const start = performance.now(); button.click();
     await new Promise<void>((resolve) => {
-      const sample = () => { frames.push({ time: performance.now() - start, height: content.getBoundingClientRect().height, cards: content.querySelectorAll('[data-task-card]').length }); if (performance.now() - start < 350) requestAnimationFrame(sample); else resolve(); };
+      const sample = () => { frames.push({ time: performance.now() - start, height: content.getBoundingClientRect().height, cards: content.querySelectorAll('[data-task-card]').length, duration: Number.parseFloat(content.style.transitionDuration) }); if (frames.length < 3 || content.getAnimations().length) requestAnimationFrame(sample); else requestAnimationFrame(() => requestAnimationFrame(() => resolve())); };
       requestAnimationFrame(sample);
     });
     return frames;
@@ -111,6 +113,27 @@ test('collapsed stage mount, animation, order, focus and network measurements', 
     await expect(stageContent(page, number).locator('[data-task-card]')).toHaveCount(0);
   }
   expect(requests).toEqual([]);
+
+  // Equal average speed across sizes, while the easing decelerates near the end.
+  await page.goto(`/projects/${smallProjectId}`);
+  await expect(stageContent(page).locator('[data-task-card]')).toHaveCount(3);
+  const shortFrames = await sampleToggle(stageControl(page));
+  const travelSpeed = (samples: Array<{ height: number; duration: number }>) => {
+    const height = Math.max(...samples.map((sample) => sample.height));
+    return height / samples[samples.length - 1].duration;
+  };
+  const shortSpeed = travelSpeed(shortFrames); const tallSpeed = travelSpeed(expansion);
+  expect(Math.max(shortSpeed, tallSpeed) / Math.min(shortSpeed, tallSpeed)).toBeLessThan(1.2);
+  const fullHeight = Math.max(...expansion.map((sample) => sample.height));
+  const segmentSpeed = (lower: number, upper: number) => {
+    const segment = expansion.filter((sample) => sample.height > fullHeight * lower && sample.height < fullHeight * upper);
+    expect(segment.length).toBeGreaterThanOrEqual(2);
+    const first = segment[0]; const last = segment[segment.length - 1];
+    return (last.height - first.height) / (last.time - first.time);
+  };
+  const middleSpeed = segmentSpeed(0.35, 0.65);
+  expect(segmentSpeed(0.01, 0.15)).toBeLessThan(middleSpeed * 0.75);
+  expect(segmentSpeed(0.85, 0.99)).toBeLessThan(middleSpeed * 0.75);
 });
 
 test('My Tasks inbox aligns metadata, styles filters, and switches task states', async ({ page }) => {
