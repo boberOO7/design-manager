@@ -133,6 +133,12 @@ migrations/tests.
   Phone skips retain their original answers and never merge/update a CRM lead. Management
   diagnostics describe Graph access and queue state, not webhook delivery or
   Meta App publication.
+- SPACE DESIGN Website accepts signed CF7 events through a separate tenant-bound
+  key registry and durable inbox. The worker atomically creates a `new` Lead with
+  source `SPACE DESIGN Website`, or records `duplicate` using normalized phone,
+  falling back to normalized email only when phone is absent. It shares the CRM
+  contact-write lock with Meta/manual writes; successful jobs discard payloads
+  and retain idempotency tombstones. See [integration and WordPress contract](../integrations/space-design-leads.md).
 - A Lead that is neither lost nor invalid can create one Project through the
   shared Project form. The existing Project/template RPC locks the Lead, creates
   the Project and template work, links both records, and marks the Lead Won in

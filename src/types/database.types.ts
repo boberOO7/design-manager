@@ -7181,6 +7181,114 @@ export type Database = {
           },
         ]
       }
+      space_design_integration_keys: {
+        Row: {
+          enabled: boolean
+          key_id: string
+          request_count: number
+          requests_per_minute: number
+          studio_id: string
+          window_started_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          key_id: string
+          request_count?: number
+          requests_per_minute?: number
+          studio_id: string
+          window_started_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          key_id?: string
+          request_count?: number
+          requests_per_minute?: number
+          studio_id?: string
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "space_design_integration_keys_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      space_design_lead_jobs: {
+        Row: {
+          attempts: number
+          available_at: string
+          completed_at: string | null
+          crm_lead_id: string | null
+          key_id: string
+          last_error: string | null
+          lease_token: string | null
+          locked_at: string | null
+          payload: Json | null
+          payload_hash: string
+          received_at: string
+          status: string
+          studio_id: string
+          submission_id: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          completed_at?: string | null
+          crm_lead_id?: string | null
+          key_id: string
+          last_error?: string | null
+          lease_token?: string | null
+          locked_at?: string | null
+          payload?: Json | null
+          payload_hash: string
+          received_at?: string
+          status?: string
+          studio_id: string
+          submission_id: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          completed_at?: string | null
+          crm_lead_id?: string | null
+          key_id?: string
+          last_error?: string | null
+          lease_token?: string | null
+          locked_at?: string | null
+          payload?: Json | null
+          payload_hash?: string
+          received_at?: string
+          status?: string
+          studio_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "space_design_lead_jobs_crm_lead_id_studio_id_fkey"
+            columns: ["crm_lead_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id", "studio_id"]
+          },
+          {
+            foreignKeyName: "space_design_lead_jobs_key_id_studio_id_fkey"
+            columns: ["key_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "space_design_integration_keys"
+            referencedColumns: ["key_id", "studio_id"]
+          },
+          {
+            foreignKeyName: "space_design_lead_jobs_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_days_off: {
         Row: {
           created_at: string
@@ -10784,6 +10892,16 @@ export type Database = {
       }
     }
     Functions: {
+      accept_space_design_lead: {
+        Args: {
+          p_key_id: string
+          p_payload: Json
+          p_payload_hash: string
+          p_studio_id: string
+          p_submission_id: string
+        }
+        Returns: string
+      }
       activate_finance_recognition: {
         Args: { p_month: string; p_request_id: string; p_studio_id: string }
         Returns: string
@@ -10974,6 +11092,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_space_design_leads: {
+        Args: { p_limit?: number }
+        Returns: {
+          lease_token: string
+          studio_id: string
+          submission_id: string
+        }[]
+      }
       claim_web_push_deliveries: {
         Args: { p_limit?: number }
         Returns: {
@@ -11029,6 +11155,14 @@ export type Database = {
           p_lease_token: string
           p_page_id: string
           p_studio_id: string
+        }
+        Returns: string
+      }
+      complete_space_design_lead: {
+        Args: {
+          p_lease_token: string
+          p_studio_id: string
+          p_submission_id: string
         }
         Returns: string
       }
@@ -11257,6 +11391,14 @@ export type Database = {
           p_studio_id: string
         }
         Returns: undefined
+      }
+      fail_space_design_lead: {
+        Args: {
+          p_lease_token: string
+          p_studio_id: string
+          p_submission_id: string
+        }
+        Returns: string
       }
       finalize_finance_setup: {
         Args: { p_studio_id: string }

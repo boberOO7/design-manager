@@ -34,7 +34,7 @@ Use this map instead of duplicating their fields here.
 | Calendar | `calendar_events`, `calendar_event_invites`, `calendar_event_participants`, `calendar_event_attendees`, `time_off_requests`, `time_off_request_approvals`, `studio_days_off` |
 | Google projection | `google_calendar_connections`, `google_calendar_server_credentials`, `google_calendar_event_mappings`, `google_calendar_reconciliation_jobs` |
 | Contractors | `contractors`, `contractor_categories`, `contractor_subcategories` |
-| CRM | `crm_leads`, `crm_lead_history`, `crm_candidates`, `crm_recruiting_cycles`; admin-only `meta_lead_forms` policies and server-only `meta_lead_jobs` inbox/tombstones |
+| CRM | `crm_leads`, `crm_lead_history`, `crm_candidates`, `crm_recruiting_cycles`; admin-only `meta_lead_forms` policies; server-only `meta_lead_jobs` and `space_design_lead_jobs` inbox/tombstones; `space_design_integration_keys` tenant-bound key registry/rate limiter |
 | Office | `submissions`, `submission_admin_details`, `submission_comments`, `submission_reactions`, `office_assignments`, `workstations`, `equipment`, `equipment_service_events`, `office_floor_plan_placements` |
 | Delivery | `notifications`, session-bound `web_push_subscriptions`, server-only `web_push_deliveries`; `private.web_push_dispatch_state` coordinates post-commit pg_net calls and pending-work retry timers |
 | Finance | `finance_settings`, `finance_accounts`, `finance_currencies`, `finance_movements`, `finance_movement_entries`, `finance_categories`, `finance_expected_items`, `finance_allocations`, `finance_planning_requests`; derived views separate broad payment availability from actionable advances; see [Finance](finance.md) for cash, expected balances and historical invariants |
