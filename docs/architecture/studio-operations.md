@@ -134,7 +134,8 @@ migrations/tests.
   diagnostics describe Graph access and queue state, not webhook delivery or
   Meta App publication.
 - SPACE DESIGN Website accepts signed CF7 events through a separate tenant-bound
-  key registry and durable inbox. The worker atomically creates a `new` Lead with
+  key registry and durable inbox. A private SQL worker, invoked directly by pg_cron
+  without HTTP/Vault credentials, atomically creates a `new` Lead with
   source `SPACE DESIGN Website`, or records `duplicate` using normalized phone,
   falling back to normalized email only when phone is absent. It shares the CRM
   contact-write lock with Meta/manual writes; successful jobs discard payloads

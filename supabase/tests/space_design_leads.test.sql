@@ -43,7 +43,7 @@ select ok(not has_function_privilege('anon','public.accept_space_design_lead(tex
 select ok(not has_function_privilege('authenticated','public.complete_space_design_lead(uuid,uuid,uuid)','EXECUTE'),'browser cannot complete');
 select ok(not has_function_privilege('authenticated','public.claim_space_design_leads(integer)','EXECUTE'),'browser cannot claim');
 select ok(not has_function_privilege('authenticated','public.fail_space_design_lead(uuid,uuid,uuid)','EXECUTE'),'browser cannot fail jobs');
-select ok(not has_function_privilege('service_role','private.dispatch_space_design_lead_worker()','EXECUTE'),'API cannot dispatch Vault scheduler');
+select ok(not has_function_privilege('service_role','private.process_space_design_lead_jobs()','EXECUTE'),'API cannot invoke private SQL worker');
 select ok((select not active from cron.job where jobname='studioflow-space-design-leads-worker'),'new scheduler is inactive');
 select is(private.space_design_phone_key('050 (123) 45-67',null),'380501234567','UA national phone maps to international');
 select is(private.space_design_phone_key('00380 50 1234567',null),'380501234567','international 00 prefix removed');

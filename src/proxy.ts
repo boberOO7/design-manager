@@ -5,7 +5,7 @@ import { isProjectsPrefetchRequest, PROJECTS_PREFETCH_HEADER } from "./lib/proje
 export async function proxy(request: NextRequest) {
   // Server integrations authenticate signatures/bearers independently of cookies.
   if (["/api/integrations/meta-leads/webhook", "/api/integrations/meta-leads/worker",
-    "/api/integrations/space-design/leads", "/api/integrations/space-design/worker"].includes(request.nextUrl.pathname)) {
+    "/api/integrations/space-design/leads"].includes(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
   request.headers.delete(PROJECTS_PREFETCH_HEADER);

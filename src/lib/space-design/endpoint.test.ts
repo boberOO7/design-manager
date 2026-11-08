@@ -2,10 +2,9 @@ import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const mocks = vi.hoisted(() => ({ accept: vi.fn(), process: vi.fn() }));
-vi.mock("./queue", () => ({ acceptSpaceDesignLead: mocks.accept, processSpaceDesignQueue: mocks.process }));
+const mocks = vi.hoisted(() => ({ accept: vi.fn() }));
+vi.mock("./queue", () => ({ acceptSpaceDesignLead: mocks.accept }));
 import { POST } from "@/app/api/integrations/space-design/leads/route";
-import { GET } from "@/app/api/integrations/space-design/worker/route";
 import { SPACE_DESIGN_PATH, MAX_BODY_BYTES } from "./security";
 
 const secret = "a".repeat(64), studio = "65000000-0000-4000-8000-000000000001";
@@ -25,8 +24,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-07T12:00:00Z"));
   vi.stubEnv("SPACE_DESIGN_KEY_ID", "space-dev"); vi.stubEnv("SPACE_DESIGN_CRM_STUDIO_ID", studio);
-  vi.stubEnv("SPACE_DESIGN_HMAC_SECRET", secret); vi.stubEnv("SPACE_DESIGN_WORKER_SECRET", "worker-secret");
-  mocks.accept.mockResolvedValue("accepted"); mocks.process.mockResolvedValue({ claimed: 0 });
+  vi.stubEnv("SPACE_DESIGN_HMAC_SECRET", secret);
+  mocks.accept.mockResolvedValue("accepted");
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
@@ -37,7 +36,6 @@ describe("SPACE DESIGN authenticated inbox endpoint", () => {
     expect(await response.json()).toEqual({ submission_id: payload.submission_id, status: "accepted" });
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.accept).toHaveBeenCalledWith("space-dev", studio, expect.stringMatching(/^[a-f0-9]{64}$/), payload);
-    expect(mocks.process).not.toHaveBeenCalled();
     const reordered = Object.fromEntries(Object.entries(payload).reverse());
     await POST(signed(JSON.stringify(reordered, null, 2)));
     expect(mocks.accept.mock.calls[1][2]).toBe(mocks.accept.mock.calls[0][2]);
@@ -87,14 +85,4 @@ describe("SPACE DESIGN authenticated inbox endpoint", () => {
     expect(await response.json()).toEqual({ error: "temporarily_unavailable" });
     vi.stubEnv("SPACE_DESIGN_HMAC_SECRET", ""); expect((await POST(signed())).status).toBe(503);
   });
-});
-
-it("authenticates the worker independently of website keys and hides API errors", async () => {
-  const request = (token: string) => new Request("https://crm.test/api/integrations/space-design/worker", { headers: { authorization: `Bearer ${token}` } });
-  expect((await GET(request("wrong"))).status).toBe(401); expect(mocks.process).not.toHaveBeenCalled();
-  expect((await GET(request("worker-secret"))).status).toBe(200);
-  mocks.process.mockRejectedValue(new Error(secret));
-  const response = await GET(request("worker-secret")); expect(response.status).toBe(503);
-  expect(await response.text()).not.toContain(secret);
-  vi.stubEnv("SPACE_DESIGN_WORKER_SECRET", ""); expect((await GET(request("worker-secret"))).status).toBe(401);
 });

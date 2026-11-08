@@ -19,10 +19,8 @@ function config() {
   const value = parseEnv(readFileSync(envFile, "utf8"));
   assert.equal(value.SPACE_DESIGN_KEY_ID, keyId, "Unexpected E2E key ID");
   assert.match(value.SPACE_DESIGN_CRM_STUDIO_ID ?? "", /^[a-f0-9-]{36}$/, "Invalid E2E studio");
-  for (const name of ["SPACE_DESIGN_HMAC_SECRET", "SPACE_DESIGN_WORKER_SECRET"]) {
-    assert.match(value[name] ?? "", /^[a-f0-9]{64}$/, `Invalid local ${name}`);
-  }
-  assert.ok(value.SPACE_DESIGN_HMAC_SECRET !== value.SPACE_DESIGN_WORKER_SECRET, "Local secrets must differ");
+  assert.match(value.SPACE_DESIGN_HMAC_SECRET ?? "", /^[a-f0-9]{64}$/, "Invalid local HMAC secret");
+  delete value.SPACE_DESIGN_WORKER_SECRET; // Ignore legacy local configuration.
   return value;
 }
 
@@ -67,7 +65,6 @@ async function prepare() {
       SPACE_DESIGN_KEY_ID: keyId,
       SPACE_DESIGN_CRM_STUDIO_ID: randomUUID(),
       SPACE_DESIGN_HMAC_SECRET: randomBytes(32).toString("hex"),
-      SPACE_DESIGN_WORKER_SECRET: randomBytes(32).toString("hex"),
     };
     writeFileSync(envFile, Object.entries(value).map(([name, item]) => `${name}=${item}`).join("\n") + "\n", { mode: 0o600, flag: "wx" });
   }
@@ -122,14 +119,16 @@ async function noOtherPendingJobs(admin, value) {
 
 async function worker(value = config(), admin = backend().admin) {
   await noOtherPendingJobs(admin, value);
-  const response = await fetch(`${baseUrl}/api/integrations/space-design/worker`, {
-    headers: { authorization: `Bearer ${value.SPACE_DESIGN_WORKER_SECRET}` },
-    redirect: "error", signal: AbortSignal.timeout(60000),
-  });
-  assert.equal(response.status, 200, "Local HTTP worker failed");
-  const result = await response.json();
+  const result = localDbJson("select private.process_space_design_lead_jobs();");
   console.log("Worker:", result);
   return result;
+}
+
+function localDbJson(query) {
+  try {
+    return JSON.parse(execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-X", "-qAt", "-v", "ON_ERROR_STOP=1"],
+      { input: query, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
+  } catch { throw new LocalSetupError("Local SQL worker/query failed; check the SQL-worker migration"); }
 }
 
 async function test() {
@@ -183,17 +182,13 @@ async function test() {
     select id,source,status from public.crm_leads where studio_id='${value.SPACE_DESIGN_CRM_STUDIO_ID}'
       and id in (${leadIds.map(id => `'${id}'`).join(",")})
   ) lead;`;
-  let leads;
-  try {
-    leads = JSON.parse(execFileSync("docker", ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-X", "-qAt", "-v", "ON_ERROR_STOP=1"],
-      { input: query, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }));
-  } catch { throw new LocalSetupError("Cannot inspect synthetic CRM results in the local DB"); }
+  const leads = localDbJson(query);
   assert.equal(leads.length, 3);
   assert.ok(leads.every(lead => lead.source === "SPACE DESIGN Website" && lead.status === "new"));
   await send(first, 200);
   const repeat = await worker(value, admin);
   assert.equal(repeat.claimed, 0, "Replay must not enqueue new work");
-  console.log("PASS real HTTP worker, CRM creation, phone/email deduplication, phone priority, PII cleanup and completed replay");
+  console.log("PASS SQL worker, CRM creation, phone/email deduplication, phone priority, PII cleanup and completed replay");
   writeFileSync(`${privateDir}/last-test.json`, JSON.stringify({ testedAt: new Date().toISOString(), studioId: value.SPACE_DESIGN_CRM_STUDIO_ID,
     keyId, endpoint: `${baseUrl}${leadPath}`, submissionIds: ids, created: 3, duplicate: 2, result: "PASS" }, null, 2) + "\n", { mode: 0o600 });
 }

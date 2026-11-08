@@ -1,32 +1,24 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import type { SpaceDesignPayload } from "./contracts";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/lib/supabase/admin-client", () => ({ createAdminClient: () => ({ rpc: mocks.rpc }) }));
-import { processSpaceDesignQueue } from "./queue";
-const identity = { studio_id: "studio", submission_id: "submission", lease_token: "lease" };
-beforeEach(() => {
-  vi.resetAllMocks();
-  mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "claim_space_design_leads" ? [identity] : "created", error: null }));
+import { acceptSpaceDesignLead } from "./queue";
+
+const payload: SpaceDesignPayload = {
+  schema_version: 1, submission_id: "65000000-0000-4000-8000-000000000002", submitted_at: "2026-11-08T12:00:00Z",
+  form_id: 3032, form_location: "footer", language: "uk", page_url: "https://example.test",
+  client_name: "Fixture", phone: null, email: "fixture@example.test",
+};
+beforeEach(() => vi.resetAllMocks());
+it("passes the verified key/studio binding and validated payload to atomic acceptance", async () => {
+  mocks.rpc.mockResolvedValue({ data: "accepted", error: null });
+  expect(await acceptSpaceDesignLead("key", "studio", "hash", payload)).toBe("accepted");
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("accept_space_design_lead", {
+    p_key_id: "key", p_studio_id: "studio", p_submission_id: payload.submission_id, p_payload_hash: "hash", p_payload: payload,
+  });
 });
-it.each(["created", "duplicate", "stale"])("reports atomic completion %s", async outcome => {
-  mocks.rpc.mockResolvedValueOnce({ data: [identity], error: null }).mockResolvedValueOnce({ data: outcome, error: null });
-  expect(await processSpaceDesignQueue()).toMatchObject({ claimed: 1, [outcome]: 1 });
-  expect(mocks.rpc).toHaveBeenCalledWith("complete_space_design_lead", { p_studio_id: "studio", p_submission_id: "submission", p_lease_token: "lease" });
-});
-it.each(["retried", "failed", "stale"])("persists sanitized failure or ignores stale worker: %s", async outcome => {
-  mocks.rpc.mockResolvedValueOnce({ data: [identity], error: null })
-    .mockResolvedValueOnce({ data: null, error: { message: "private database message" } })
-    .mockResolvedValueOnce({ data: outcome, error: null });
-  expect(await processSpaceDesignQueue()).toMatchObject({ [outcome]: 1 });
-  expect(mocks.rpc).toHaveBeenLastCalledWith("fail_space_design_lead", { p_studio_id: "studio", p_submission_id: "submission", p_lease_token: "lease" });
-});
-it("handles a rejected API call and leaves recovery to lease expiration if retry persistence is unavailable", async () => {
-  mocks.rpc.mockResolvedValueOnce({ data: [identity], error: null }).mockRejectedValueOnce(new Error("network down"))
-    .mockResolvedValueOnce({ data: null, error: { message: "network down" } });
-  await expect(processSpaceDesignQueue()).rejects.toThrow("space_design_retry_unavailable");
-});
-it("fails safely when the claim API is unavailable", async () => {
-  mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "database down" } });
-  await expect(processSpaceDesignQueue()).rejects.toThrow("space_design_claim_failed");
-  expect(mocks.rpc).toHaveBeenCalledTimes(1);
+it("does not expose API errors or acknowledge an unconfirmed inbox write", async () => {
+  mocks.rpc.mockResolvedValue({ data: null, error: { message: "private database response" } });
+  await expect(acceptSpaceDesignLead("key", "studio", "hash", payload)).rejects.toThrow("space_design_inbox_unavailable");
 });

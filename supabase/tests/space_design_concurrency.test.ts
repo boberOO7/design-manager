@@ -4,7 +4,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { POST } from "@/app/api/integrations/space-design/leads/route";
-import { processSpaceDesignQueue } from "@/lib/space-design/queue";
 
 // Hard-coded local container: never use a linked project or an arbitrary DB URL.
 const args = ["exec", "-i", "supabase_db_design-manager", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-qAt"];
@@ -145,7 +144,26 @@ describe.skipIf(process.env.SPACE_DESIGN_LOCAL_DB_TESTS !== "1")("local SPACE DE
       sql(`delete from public.space_design_lead_jobs where studio_id='${studio}' and submission_id in ('${ids[0]}','${ids[1]}');`);
     }
   }, 15000);
-  it("runs signed endpoint -> local PostgREST inbox -> worker -> actual CRM lead", async () => {
+  it("concurrent SQL workers skip a leased batch and create one lead per contact", async () => {
+    const ids = [randomUUID(), randomUUID()];
+    sql(`set role service_role;${ids.map(id => enqueue(id, "+12025550199")).join("\n")}`);
+    const barrier = session(`begin;select pg_advisory_xact_lock(hashtextextended('studioflow:crm_lead_phone:${studio}',0));select 'ready';\n`);
+    let first: ReturnType<typeof session> | undefined;
+    let second: ReturnType<typeof session> | undefined;
+    try {
+      await until(() => barrier.output().includes("ready"));
+      first = session("set application_name='SpaceDesignFixture';select private.process_space_design_lead_jobs();\n"); first.child.stdin.end();
+      await waiters(1);
+      second = session("select private.process_space_design_lead_jobs();\n"); second.child.stdin.end();
+      expect(JSON.parse(await second.done)).toMatchObject({ claimed: 0 });
+      barrier.child.stdin.end("commit;\n"); await barrier.done;
+      expect(JSON.parse(await first.done)).toMatchObject({ claimed: 2, created: 1, duplicate: 1 });
+    } finally {
+      if (!barrier.child.stdin.writableEnded) barrier.child.stdin.end("rollback;\n");
+      await Promise.allSettled([barrier.done, ...(first ? [first.done] : []), ...(second ? [second.done] : [])]);
+    }
+  }, 15000);
+  it("runs signed endpoint -> local PostgREST inbox -> SQL worker -> actual CRM lead", async () => {
     // Capture local status in memory; never print service keys or read .env.prod.
     const config: Record<string, unknown> = JSON.parse(execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], {
       encoding: "utf8", env: { ...process.env, DO_NOT_TRACK: "1" }, stdio: ["ignore", "pipe", "pipe"],
@@ -169,7 +187,7 @@ describe.skipIf(process.env.SPACE_DESIGN_LOCAL_DB_TESTS !== "1")("local SPACE DE
     const reordered = Object.fromEntries(Object.entries(JSON.parse(body)).reverse());
     expect((await POST(request(JSON.stringify(reordered, null, 2)))).status).toBe(200);
     expect((await POST(request(body.replace("SD pipeline fixture", "Changed fixture")))).status).toBe(409);
-    expect(await processSpaceDesignQueue()).toMatchObject({ created: 1 });
+    expect(JSON.parse(sql("select private.process_space_design_lead_jobs();"))).toMatchObject({ created: 1 });
     expect(sql(`select count(*) from public.crm_leads where studio_id='${studio}' and client_name='SD pipeline fixture' and source='SPACE DESIGN Website' and status='new';`)).toBe("1");
     expect(sql(`select status||':'||(payload is null)::text from public.space_design_lead_jobs where studio_id='${studio}' and submission_id='${id}';`)).toBe("created:true");
     expect((await POST(request())).status).toBe(200);

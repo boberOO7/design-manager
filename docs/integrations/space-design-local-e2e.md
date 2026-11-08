@@ -1,7 +1,7 @@
 # SPACE DESIGN → StudioFlow: локальний E2E / WordPress Codex
 
 Підготовлено 2026-11-08. Backend не переписувався: перевіряємо чинні
-`202 accepted` / `200 already_accepted`, inbox і HTTP-worker.
+`202 accepted` / `200 already_accepted`, inbox і SQL-worker. Нова міграція SQL-worker застосовується окремо; HTTP-worker видалений.
 Це підготовка приймача StudioFlow; плагін/CF7 у LocalWP ще потрібно перевірити
 на стороні WordPress. Жодних production URL, ключів або remote DB.
 
@@ -64,8 +64,8 @@ Dev-server уже запущений під час підготовки; пов�
 Існуючий `.env.local` не змінюється.
 
 У `.env.space-design.e2e.local` з правами 0600 збережені лише нові dev-ключі,
-Key ID і UUID тестової студії. **Не передавати цей файл WordPress:** там також
-є локальний worker-secret. HMAC-only handoff — окремий PHP-файл.
+Key ID і UUID тестової студії. Старий worker-secret у раніше створеному файлі
+ігнорується й більше не генерується. Для WordPress використовувати окремий PHP-файл.
 Усі файли конфігурації/секретів виключені з Git.
 
 WSL-джерело приватної PHP-конфігурації:
@@ -97,8 +97,8 @@ wsl.exe -d Ubuntu --cd /home/vasilios/work/design-manager bash -ic "node scripts
 `bash -ic` потрібен для наявного Node.js 22 через nvm; не використовувати тут
 `bash -lc`, який у цьому Windows→WSL запуску вибирає старий системний Node.
 
-Worker command читає свій секрет із приватного dev-env і викликає справжній
-локальний HTTP-worker; секрет не потрапляє в аргументи або stdout.
+Worker command виконує `select private.process_space_design_lead_jobs();`
+через локальний Docker/psql. HTTP-запит і worker-secret не потрібні.
 Вбудована перевірка відмовляється запускати глобальний worker, якщо є pending /
 processing jobs інших студій. Студія також перевіряється за UUID та E2E-назвою.
 Діагностика показує лише технічні статуси/UUID, без контактів чи payload.
@@ -142,15 +142,16 @@ Windows probe читає лише локальний private PHP-файл, пі�
 
 - Локальні Docker/Supabase API і DB працюють; застосовані об'єкти обох
   SPACE DESIGN migrations: inbox/key registry, accept/claim/complete/fail RPC,
-  нормалізатори телефону/email. Нові міграції/зміни RLS не знадобилися.
+  нормалізатори телефону/email. Для SQL-worker додана окрема міграція
+  `20261108201252_space_design_sql_worker.sql`; публічні RLS/grants збережені.
 - В історії snapshot немає записів двох SPACE DESIGN migrations, хоча об'єкти
   вже застосовані адресно у попередній роботі. Не використовували reset,
   `--include-all`, push або repair чужої історії; не застосовували SQL повторно.
 - Next.js слухає `127.0.0.1:3100`. Windows також показує listener
-  `127.0.0.1:3100`. Запит без worker-secret з Windows → `401`.
+  `127.0.0.1:3100`. HTTP-worker більше не існує; запуск обробки лише SQL.
 - Справжній HTTP E2E: `202` приймання; `200` повтор / інший порядок JSON-ключів;
   `409` конфлікт; форми footer/modal і мови uk/en/pl.
-- Справжній worker і CRM: 3 created, 2 duplicate за телефоном/email,
+- SQL-worker і CRM: 3 created, 2 duplicate за телефоном/email,
   phone-present не використовує email fallback; source `SPACE DESIGN Website`,
   status `new`, завершені payload очищені. Повтор завершеної події не створює job.
 - Окрема підписана заявка **з Windows** через loopback → `202`; після worker

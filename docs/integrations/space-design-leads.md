@@ -17,14 +17,19 @@ Idempotency-Key/submission_id. Ключ і секрет беруться лиш�
 Пробіли та порядок JSON-ключів не створюють конфлікт; зміна значень дає `409`.
 HMAC завжди перевіряється над точними сирими байтами отриманого запиту.
 
-`GET /api/integrations/space-design/worker` має незалежний bearer secret.
-`processSpaceDesignQueue` через RPC бере до 5 job, максимум RPC 10,
-`FOR UPDATE SKIP LOCKED`. Lease-token змінюється при recovery через 5 хвилин;
-застарілий worker не може завершити/зіпсувати перевидані job. Максимум 8 спроб,
-backoff 30 секунд × 2^(attempt−1), максимум 3600 секунд, як у Meta.
-Недоступність worker/DB не втрачає inbox: спрацює наступний scheduler tick або
-recovery lease. Результат невдало збереженого completion з'ясовується наступним
-викликом; атомарна транзакція й lease не допускають повторного CRM insert.
+`private.process_space_design_lead_jobs()` запускається безпосередньо з
+Supabase pg_cron. Вона бере до 5 job через `FOR UPDATE SKIP LOCKED`, викликає
+чинний atomic completion і повертає лише лічильники. HTTP-worker, його URL,
+bearer-секрет і Vault-конфігурація більше не використовуються.
+
+Кожен CRM write має окремий PL/pgSQL exception block: його помилка відкочується,
+інші job продовжують обробку, а `fail_space_design_lead` зберігає sanitized code
+і backoff. Lease-token/recovery 5 хвилин, максимум 8 спроб, backoff
+30 секунд × 2^(attempt−1), максимум 3600 секунд збережені. Якщо весь запуск
+перервано, його DB-транзакція відкочується; раніше прийнятий inbox залишається.
+SQL worker — private/security invoker із порожнім search_path; виконання
+відкликане в PUBLIC/anon/authenticated/service_role. Його викликає DB-оператор
+або Cron під своїм database-owner контекстом.
 
 `complete_space_design_lead` бере студію/контакти з inbox, а не з аргументів
 довільного payload worker. Перевірка дублікату, CRM insert і технічний результат
@@ -79,20 +84,21 @@ order by received_at desc;
    remote URL, `.env.prod`, db push або db reset для цих перевірок.
 2. Застосувати нові міграції через `DO_NOT_TRACK=1 pnpm exec supabase migration up --local`.
    Якщо історія локального snapshot має сторонні пропуски, не застосовувати
-   `--include-all`: виконати лише ці два нові файли один раз, у порядку,
+   `--include-all`: виконати лише відсутні з цих трьох файлів один раз, у порядку,
    на **локальному** контейнері. Це не ремонтує/не змінює migration history:
 
    ```bash
    docker exec -i supabase_db_design-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 < supabase/migrations/20261107205223_space_design_lead_inbox.sql
    docker exec -i supabase_db_design-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 < supabase/migrations/20261107205818_space_design_national_phone.sql
+   docker exec -i supabase_db_design-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 < supabase/migrations/20261108201252_space_design_sql_worker.sql
    ```
 
-3. В `.env.local` вказати звичайні **локальні** NEXT_PUBLIC_SUPABASE_URL та
+3. В `.env.local` вказати **локальні** NEXT_PUBLIC_SUPABASE_URL та
    SUPABASE_SECRET_KEY, `SPACE_DESIGN_KEY_ID=space-design-dev`,
-   `SPACE_DESIGN_CRM_STUDIO_ID=<dev studio UUID>`. Згенерувати два незалежні
-   секрети командою `openssl rand -hex 32`: SPACE_DESIGN_HMAC_SECRET і
-   SPACE_DESIGN_WORKER_SECRET. Не комітити їх. WordPress знає лише перший секрет
-   і key ID. Реальні секрети/ключі/студія цією реалізацією не налаштовувалися.
+   `SPACE_DESIGN_CRM_STUDIO_ID=<dev studio UUID>` і наявний спільний
+   `SPACE_DESIGN_HMAC_SECRET` (64 lowercase hex). Для нової dev-інтеграції
+   можна згенерувати HMAC через `openssl rand -hex 32`; production не обертати.
+   Worker-secret і worker URL не потрібні.
 4. Зареєструвати ключ у локальній/dev базі (студія має вже існувати):
 
    ```sql
@@ -100,10 +106,10 @@ order by received_at desc;
    values ('space-design-dev','<dev studio UUID>');
    ```
 
-5. Запустити `pnpm dev`. Надіслати синтетичну заявку за контрактом; worker
-   викликати вручну з `Authorization: Bearer <SPACE_DESIGN_WORKER_SECRET>` на
-   `GET http://localhost:3000/api/integrations/space-design/worker`.
-   Endpoint не запускає ненадійний fire-and-forget імпорт; необхідний worker.
+5. Запустити локальний сервер і надіслати синтетичну заявку за контрактом.
+   Для підготовленого E2E використовувати `node scripts/space-design-local.mjs start`,
+   а для ручної обробки — `node scripts/space-design-local.mjs worker`.
+   SQL-еквівалент для DB-оператора: `select private.process_space_design_lead_jobs();`.
 6. Після зміни public DB-контракту типи генеруються лише з локальної бази:
    `DO_NOT_TRACK=1 pnpm exec supabase gen types --local > src/types/database.types.ts`.
 
@@ -111,33 +117,36 @@ order by received_at desc;
 вбудований DB rate limit захищає приймання автентифікованих заявок і працює
 між усіма server instances. Невідомі ключі/підписи відхиляються до доступу до DB.
 
-## Scheduler, без активації в цій задачі
+## Scheduler
 
-Міграція додає **inactive** pg_cron job `studioflow-space-design-leads-worker`
-(`* * * * *`). Він викликає private dispatch → pg_net GET → worker.
-Meta job і CRON_SECRET не використовуються/не змінюються. Vault:
+Нова міграція `20261108201252_space_design_sql_worker.sql` замінює command
+існуючого job `studioflow-space-design-leads-worker` на
+`select private.process_space_design_lead_jobs();` (`* * * * *`) і залишає
+його **inactive** для явного погодження активації. Вона видаляє старий HTTP
+dispatcher, але не видаляє Vault-записи/секрети та спільні extensions інших
+інтеграцій. Meta та Web Push залишаються зі своєю чинною інфраструктурою.
 
-- `studioflow_space_design_worker_url`: точний HTTPS URL
-  `https://<dev-host>/api/integrations/space-design/worker`;
-- `studioflow_space_design_worker_secret`: той самий SPACE_DESIGN_WORKER_SECRET.
-
-Після окремого дозволу оператора для цільового dev-середовища:
+Після погодження для цільового середовища:
 
 ```sql
-select vault.create_secret('https://<dev-host>/api/integrations/space-design/worker','studioflow_space_design_worker_url');
-select vault.create_secret('<SPACE_DESIGN_WORKER_SECRET>','studioflow_space_design_worker_secret');
-select cron.alter_job(jobid,active:=true) from cron.job where jobname='studioflow-space-design-leads-worker';
+select cron.alter_job(jobid,active:=true)
+from cron.job where jobname='studioflow-space-design-leads-worker';
 ```
 
-Для локального HTTP використати ручний виклик worker; dispatch свідомо вимагає
-HTTPS. Disabled key блокує нове приймання; вже прийняті jobs продовжують
-оброблятися. Це зберігає гарантію доставки раніше прийнятого inbox.
+Один SQL-worker обробляє jobs різних студій. API зараз усе ще використовує
+один набір Key ID/HMAC/studio з env на deployment; це обмеження приймання
+окреме від спільного worker. Форми/source/UA-нормалізація залишаються SPACE-специфічними.
+Disabled key блокує нове приймання; раніше прийняті jobs продовжують обробку.
+
+Старі `SPACE_DESIGN_WORKER_SECRET`, `studioflow_space_design_worker_secret` і
+`studioflow_space_design_worker_url` новим кодом не читаються. Їх можна залишити
+під час rollout; видалення не є передумовою запуску. Не видаляти Meta/Web Push secrets.
 
 ## Автоматизовані перевірки
 
 ```bash
 pnpm exec vitest run src/lib/space-design
-DO_NOT_TRACK=1 pnpm exec supabase test db --local supabase/tests/space_design_leads.test.sql
+DO_NOT_TRACK=1 pnpm exec supabase test db --local supabase/tests/space_design_leads.test.sql supabase/tests/space_design_sql_worker.test.sql
 SPACE_DESIGN_LOCAL_DB_TESTS=1 DO_NOT_TRACK=1 pnpm exec vitest run supabase/tests/space_design_concurrency.test.ts
 pnpm exec tsc --noEmit
 ```
@@ -160,14 +169,11 @@ PII cleanup/tombstone, одночасні deliveries/claims/completions, руч�
 пропуски migration history. Production, remote DB, WordPress, deploy і push не
 використовувалися. Scheduler залишено вимкненим; тестуються лише синтетичні ліди.
 
-Результат локальних перевірок 2026-11-07:
+Поточна зміна перевіряється сфокусованими endpoint/unit, SQL-worker/domain і
+concurrency тестами. Public database contract не змінено: нова функція в private,
+тому generated public TypeScript types не потребують регенерації.
 
-- SPACE DESIGN unit/endpoint/worker: 38 тестів пройшли.
-- SPACE DESIGN concurrency та повний pipeline: 7 тестів пройшли.
-- SPACE DESIGN pgTAP: 59 перевірок пройшли.
-- Вузькі Meta регресії: 14 unit/endpoint, 2 concurrency та 63 pgTAP пройшли.
-- `pnpm exec tsc --noEmit` і `git diff --check` пройшли.
-
-Не запускалися production build, повні репозиторні suites, browser/E2E або
-реальний WordPress. Автоматична активація scheduler та видача реальних ключів
-не виконувалися; вони потребують конфігурації конкретного dev-середовища.
+Перевірено локально 2026-11-08: 31 unit/endpoint тест, 80 pgTAP перевірок,
+8 concurrency/pipeline тестів; TypeScript і diff check пройшли. На вже запущеному
+loopback-сервері також пройшов HTTP → inbox → SQL-worker → CRM smoke: created,
+phone/email duplicate, повтори й payload conflict. Production Cron не активувався.

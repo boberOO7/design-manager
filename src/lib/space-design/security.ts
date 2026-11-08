@@ -28,8 +28,3 @@ export function validSpaceDesignSignature(raw: Uint8Array, headers: Headers, con
   const expected = createHmac("sha256", config.secret).update(`${timestamp}\nPOST\n${SPACE_DESIGN_PATH}\n`).update(raw).digest("hex");
   return equal(signature.slice(7), expected);
 }
-
-export function authorizedSpaceDesignWorker(request: Request) {
-  const secret = process.env.SPACE_DESIGN_WORKER_SECRET;
-  return Boolean(secret && equal(request.headers.get("authorization") ?? "", `Bearer ${secret}`));
-}
