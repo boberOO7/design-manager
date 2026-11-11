@@ -1,4 +1,5 @@
 import "server-only";
+import { STUDIO_DAY_OFF_COLUMNS, studioDayOffItem } from "@/lib/studio-days-off";
 
 import { getCalendarTasks } from "./calendar-tasks";
 
@@ -90,7 +91,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
 
   const studioDaysOffPromise = supabase
     .from("studio_days_off")
-    .select("id, date, name, note")
+    .select(STUDIO_DAY_OFF_COLUMNS)
     .eq("studio_id", membership.studio_id)
     .order("date");
 
@@ -176,7 +177,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
     items.push(...normalizePayrollCalendar(payrollResult.data ?? []));
 
     for (const dayOff of studioDaysOffResult.data ?? []) {
-      items.push({ source: "studio_day_off", key: `studio-day-off:${dayOff.id}`, id: dayOff.id, title: dayOff.name, note: dayOff.note, startDate: dayOff.date, endDate: dayOff.date, allDay: true, projectId: null, personIds: [] });
+      items.push(studioDayOffItem(dayOff));
     }
 
     for (const project of projectDeadlinesResult.data ?? []) {

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { formatNavigationAttentionCount, getNavigationItems, isNavigationItemActive, navigationIcons } from "@/constants/navigation";
 import { StudioFlowMark } from "@/components/brand/studioflow-mark";
 import { Drawer } from "@/components/ui/drawer";
+import { ShellControl } from "@/components/layout/shell-control";
 import { cn } from "@/lib/utils";
 
 const mobileNavigationId = "mobile-application-navigation";
@@ -21,17 +22,17 @@ export function MobileNavigation({ crmAttentionCount, leaderboardVisibleToEmploy
   const items = getNavigationItems(systemRole, leaderboardVisibleToEmployees);
 
   return <>
-    <button
+    <ShellControl
       ref={triggerRef}
       type="button"
       aria-controls={mobileNavigationId}
       aria-expanded={open}
       aria-label={t("open")}
-      className="inline-flex size-11 items-center justify-center rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] text-[var(--ui-text-secondary)] transition-colors hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] lg:hidden"
+      className="size-11 lg:hidden"
       onClick={() => setOpen(true)}
     >
       <Menu size={20} aria-hidden="true" />
-    </button>
+    </ShellControl>
     <Drawer isOpen={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} side="left" title={t("title")}>
       <div id={mobileNavigationId} className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-[var(--ui-border)] px-5 py-4">

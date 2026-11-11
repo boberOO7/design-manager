@@ -49,7 +49,7 @@ export function SignOutButton() {
         ref={triggerRef}
         onClick={() => setConfirmationOpen(true)}
         disabled={isLoading}
-        className="gap-2 px-3 text-sm font-medium hover:border-[var(--ui-danger-border)] hover:text-[var(--ui-danger-text)]"
+        className="gap-2 px-3 text-sm font-medium"
       >
         <LogOut size={16} aria-hidden="true" />
         {isLoading ? t("signingOut") : t("signOut")}

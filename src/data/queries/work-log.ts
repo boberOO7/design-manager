@@ -1,4 +1,5 @@
 import "server-only";
+import { getStudioDayOffDates } from "@/lib/studio-days-off";
 
 import { wasCorrectionAssignedOnDate } from "@/lib/task-corrections";
 import { getWorkMakeupDates } from "@/lib/calendar-work-time";
@@ -33,12 +34,13 @@ async function loadWorkLogEligibility(client: Client, membership: ActiveStudioMe
       .eq("studio_id", membership.studio_id).eq("user_id", membership.authenticatedUserId)
       .eq("status", "approved").eq("all_day", true).is("cancelled_at", null)
       .lte("start_date", through).gte("end_date", start).order("id").range(first, last)),
-    loadAllRows((first, last) => client.from("studio_days_off").select("date")
-      .eq("studio_id", membership.studio_id).gte("date", start).lte("date", through).order("date").range(first, last)),
+    loadAllRows((first, last) => client.from("studio_days_off").select("date,end_date")
+      .eq("studio_id", membership.studio_id).lte("date", through)
+      .or(`end_date.gte.${start},and(end_date.is.null,date.gte.${start})`).order("date").range(first, last)),
     events ? Promise.resolve({ data: events, error: null }) : loadWorkLogCalendar(client, membership.studio_id),
   ]);
   if (absences.error || daysOff.error || calendar.error) throw new Error("Unable to load work calendar.", { cause: absences.error ?? daysOff.error ?? calendar.error });
-  return { joinedDate, timeOff: absences.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date),
+  return { joinedDate, timeOff: absences.data ?? [], studioDaysOff: getStudioDayOffDates(daysOff.data ?? [], { start, end: through }),
     workMakeupDates: getWorkMakeupDates(calendar.data ?? [], membership.authenticatedUserId, { from: start, through }) };
 }
 

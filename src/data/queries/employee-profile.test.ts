@@ -20,7 +20,7 @@ const person = { is_active: true, joined_at: "2024-01-01", system_role: "employe
 
 beforeEach(() => {
   vi.clearAllMocks();
-  const query = { select: mocks.select.mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), neq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), maybeSingle: mocks.maybeSingle, range: mocks.range, insert: mocks.insert, then: (resolve: (value: unknown) => unknown) => mocks.counts().then(resolve) };
+  const query = { select: mocks.select.mockReturnThis(), eq: vi.fn().mockReturnThis(), or: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), neq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), maybeSingle: mocks.maybeSingle, range: mocks.range, insert: mocks.insert, then: (resolve: (value: unknown) => unknown) => mocks.counts().then(resolve) };
   mocks.from.mockReturnValue(query);
   mocks.createClient.mockResolvedValue({ from: mocks.from });
   mocks.resolve.mockResolvedValue({ status: "ACTIVE_STUDIO", membership });

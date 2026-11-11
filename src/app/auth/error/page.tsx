@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function AuthErrorPage() {
   return (
@@ -16,12 +17,9 @@ export default function AuthErrorPage() {
           >
             Request password link
           </Link>
-          <Link
-            href="/login"
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-4 text-sm font-semibold text-[var(--ui-text-secondary)] transition hover:bg-[var(--ui-surface-subtle)]"
-          >
-            Return to sign in
-          </Link>
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href="/login">Return to sign in</Link>
+          </Button>
         </div>
       </div>
     </main>

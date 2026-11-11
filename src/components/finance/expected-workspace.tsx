@@ -47,7 +47,7 @@ const panel="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] b
 const projectActionClass="border border-transparent transition-colors duration-150 hover:border-[var(--ui-border)] hover:bg-[var(--ui-surface-muted)] hover:text-[var(--ui-text)] active:bg-[var(--ui-surface-muted)]";
 const projectDestructiveActionClass="border border-transparent text-[var(--ui-danger-text)] transition-colors duration-150 hover:border-[var(--ui-border-subtle)] hover:bg-[var(--ui-danger-surface)] active:bg-[var(--ui-danger-surface)]";
 const expectedPrimaryActionClass = "cursor-pointer gap-2 transition-[background-color,filter] duration-200 hover:brightness-95 active:brightness-90 motion-reduce:transition-none";
-const expectedSecondaryActionClass = "cursor-pointer gap-2 transition-colors duration-200 hover:border-[var(--ui-text-muted)] hover:bg-[var(--ui-surface-strong)] hover:text-[var(--ui-text)] active:bg-[var(--ui-border)] motion-reduce:transition-none";
+const expectedSecondaryActionClass = "cursor-pointer gap-2 active:[--ui-control-interaction-background:var(--ui-border)]";
 type ProjectContext=FinanceProjectData&{ stream:typeof projectStreams[number];today:string };
 
 function PayrollExpectedDateForm({ item, title, onSaved, onPending, onCalculation }: { item: FinanceExpected; title: string; onSaved: () => void; onPending: (pending: boolean) => void; onCalculation: () => void }) {

@@ -10,7 +10,10 @@ import { getWorkLogReminders } from "./work-log";
 describe("work log reminder calendar query", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("loads the verified member's makeup schedule and requests an explicit weekend submission", async () => {
+  it.each([
+    { label: "without a company break", daysOff: [], missingDates: ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"] },
+    { label: "with a break starting before the window", daysOff: [{ date: "2026-11-01", end_date: "2026-11-04" }], missingDates: ["2026-11-05", "2026-11-06", "2026-11-07"] },
+  ])("loads the verified member's makeup schedule $label", async ({ daysOff, missingDates }) => {
     mocks.membership.mockResolvedValue({ status: "ACTIVE_STUDIO", membership: {
       authenticatedUserId: "employee", studio_id: "studio", joined_at: "2026-11-02T08:00:00Z",
     } });
@@ -21,13 +24,13 @@ describe("work log reminder calendar query", () => {
     const calendars = vi.fn();
     mocks.client.mockResolvedValue({ from: vi.fn((table: string) => ({
       select: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(), or: vi.fn().mockReturnThis(), lt: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(),
       eq: vi.fn(function (this: unknown, field: string, value: unknown) { calendars(table, field, value); return this; }),
-      range: vi.fn().mockResolvedValue({ data: table === "calendar_events" ? [makeup] : [], error: null }),
+      range: vi.fn().mockResolvedValue({ data: table === "calendar_events" ? [makeup] : table === "studio_days_off" ? daysOff : [], error: null }),
     })) });
     await expect(getWorkLogReminders(new Date("2026-11-08T12:00:00Z"))).resolves.toMatchObject({
       scope: "studio:employee", latestEligibleDate: "2026-11-07",
-      missingDates: ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"],
+      missingDates,
     });
     expect(calendars).toHaveBeenCalledWith("calendar_events", "studio_id", "studio");
     expect(calendars).toHaveBeenCalledWith("time_off_requests", "user_id", "employee");

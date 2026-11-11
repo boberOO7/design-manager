@@ -1,10 +1,11 @@
 import "server-only";
+import { getStudioDayOffDates } from "@/lib/studio-days-off";
 import { getActiveStudioAdmin } from "./active-studio-admin";
 import { loadAllRows } from "./all-rows";
 import { getStatisticsWorkday } from "./statistics-workday";
 import { createClient } from "@/lib/supabase/server";
 import { getKyivDateOnly } from "@/lib/validation/project";
-import { instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
+import { addCalendarDays, instantToDateOnly, zonedWallTimeToIso } from "@/lib/calendar";
 import { activityMonthBounds, buildTeamActivity, teamActivityMonthSchema } from "@/lib/team-activity";
 
 export async function getTeamActivity(month: string, today = getKyivDateOnly()) {
@@ -30,8 +31,9 @@ export async function getTeamActivity(month: string, today = getKyivDateOnly()) 
     loadAllRows((first, last) => client.from("time_off_requests").select("id,user_id,request_type,start_date,end_date,all_day,start_time,end_time")
       .eq("studio_id", studio).eq("status", "approved").is("cancelled_at", null)
       .lt("start_date", until).gte("end_date", from).order("id").range(first, last)),
-    loadAllRows((first, last) => client.from("studio_days_off").select("date")
-      .eq("studio_id", studio).gte("date", from).lt("date", until).order("date").range(first, last)),
+    loadAllRows((first, last) => client.from("studio_days_off").select("date,end_date")
+      .eq("studio_id", studio).lt("date", until)
+      .or(`end_date.gte.${from},and(end_date.is.null,date.gte.${from})`).order("date").range(first, last)),
     // Recurrence templates and moved/cancelled overrides must be loaded together.
     loadAllRows((first, last) => client.from("calendar_events")
       .select("id,title,event_type,starts_at,ends_at,all_day,project_id,organizer_id,assignee_id,cancelled_at,recurrence_rule,series_id,occurrence_start,compensates_time_off_request_id,project:projects!calendar_events_project_id_fkey(id,name),invites:calendar_event_invites(event_id,user_id,status),participants:calendar_event_participants(event_id,user_id)")
@@ -43,5 +45,5 @@ export async function getTeamActivity(month: string, today = getKyivDateOnly()) 
   return buildTeamActivity({ month, today, workdayMinutes, entries: entries.data ?? [], submissions: submissions.data ?? [], timers: timers.data ?? [],
     people: (people.data ?? []).map(row => ({ id: row.user_id, name: row.profile?.full_name ?? "", active: row.is_active && !!row.profile?.is_active,
       avatarUrl: row.profile?.avatar_url ?? null, joinedDate: row.joined_at ? instantToDateOnly(row.joined_at) : null })),
-    events: events.data ?? [], timeOff: timeOff.data ?? [], studioDaysOff: (daysOff.data ?? []).map(day => day.date) });
+    events: events.data ?? [], timeOff: timeOff.data ?? [], studioDaysOff: getStudioDayOffDates(daysOff.data ?? [], { start: from, end: addCalendarDays(until, -1) }) });
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { getStudioDayOffDates } from "@/lib/studio-days-off";
 
 import { resolveActiveStudioMembership } from "@/data/queries/active-studio-membership";
 import { getCanonicalProductivityAttributions } from "@/data/queries/productivity-attributions";
@@ -118,8 +119,8 @@ export async function getEmployeeProfile(userId: string) {
       const [completedTasks, inProgressTasks, assigned, collaborated, assignedNow, collaboratedNow, timeOff, daysOff, workTime] = await Promise.all([
         countTasks("completed"), countTasks("in_progress"), loadCompletions(false), loadCompletions(true),
         currentTasks(false), currentTasks(true), approvedPeriods(),
-        supabase.from("studio_days_off").select("date").eq("studio_id", membership.studio_id)
-          .gte("date", bounds.start).lte("date", bounds.today),
+        supabase.from("studio_days_off").select("date,end_date").eq("studio_id", membership.studio_id)
+          .lte("date", bounds.today).or(`end_date.gte.${bounds.start},and(end_date.is.null,date.gte.${bounds.start})`),
         getEmployeeWorkStatistics(membership.studio_id, userId),
       ]);
       if (assignedNow.error || collaboratedNow.error || daysOff.error || !daysOff.data) {
@@ -130,7 +131,7 @@ export async function getEmployeeProfile(userId: string) {
         .slice(0, 2).map((task) => ({ id: task.id, title: task.title, projectId: task.project.id, projectName: task.project.name }));
       return {
         completedTasks, inProgressTasks, currentTasks: snapshot, workTime,
-        heatmap: buildProfileHeatmap({ tasks: [...assigned, ...collaborated], joinedAt: person.joined_at, timeOff, studioDaysOff: daysOff.data.map((day) => day.date), now }),
+        heatmap: buildProfileHeatmap({ tasks: [...assigned, ...collaborated], joinedAt: person.joined_at, timeOff, studioDaysOff: getStudioDayOffDates(daysOff.data, { start: bounds.start, end: bounds.today }), now }),
       };
     })() : Promise.resolve(null),
   ]);

@@ -27,7 +27,7 @@ describe("Calendar supporting streams", () => {
         const select = url.searchParams.get("select") ?? "";
         if (url.pathname.endsWith("/projects") && select.includes("project_code")) return projects;
         if (url.pathname.endsWith("/studio_members") && select.includes("assignments")) return people;
-        if (url.pathname.endsWith("/studio_days_off")) return json([{ id: "day-off", date: "2026-09-15", name: "Company day off", note: null }]);
+        if (url.pathname.endsWith("/studio_days_off")) return json([{ id: "day-off", date: "2026-09-15", end_date: "2026-09-17", name: "Company day off", note: null }]);
         return json([]);
       } },
     });
@@ -39,7 +39,7 @@ describe("Calendar supporting streams", () => {
     try {
       expect(await streams.preferences).toEqual({ timeFormat: "12h", timeZone: "America/New_York" });
       const data = await streams.data;
-      expect(data.items).toEqual([expect.objectContaining({ source: "studio_day_off", startDate: "2026-09-15" })]);
+      expect(data.items).toEqual([expect.objectContaining({ source: "studio_day_off", startDate: "2026-09-15", endDate: "2026-09-17" })]);
       expect(data).toMatchObject({ currentUserId: "user", isAdmin: false, timeFormat: "12h", timeZone: "America/New_York" });
       expect(data).not.toHaveProperty("projects");
       expect(data).not.toHaveProperty("people");

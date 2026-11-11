@@ -151,6 +151,20 @@ select is((select starts_on from public.finance_labor_automation where studio_id
 select is((select effective_from from public.finance_labor_capacity_revisions where studio_id=pg_temp.pid(1) and employee_id is null order by effective_from limit 1),pg_temp.month_start(),
   'initial capacity is effective from month start to cover the full denominator');
 
+-- A company break stays one row but excludes every covered day in both live helpers.
+insert into public.studio_days_off(studio_id,date,end_date,name,created_by)
+values(pg_temp.pid(1),pg_temp.month_start()+2,pg_temp.month_start()+4,'Period capacity test',pg_temp.pid(10));
+select is((private.finance_automatic_labor_basis_before_source_review(pg_temp.pid(1),pg_temp.pid(21),null)->>'expectedMinutes')::integer,
+  (pg_temp.month_start(1)-pg_temp.month_start()-3)*360,'automatic labor excludes every inclusive date of a company period');
+select is((private.finance_labor_period_basis(pg_temp.pid(1),
+  (select o from public.finance_obligations o where o.id=pg_temp.pid(21)),private.finance_labor_configuration(pg_temp.pid(1)),
+  private.finance_labor_source(pg_temp.pid(1),pg_temp.pid(21)),null,'UAH',null)->>'expectedMinutes')::integer,
+  (pg_temp.month_start(1)-pg_temp.month_start()-3)*360,'reporting labor excludes the same entire company period');
+select is((select count(*) from jsonb_array_elements(private.finance_automatic_labor_basis_before_source_review(pg_temp.pid(1),pg_temp.pid(21),null)->'days') d
+  where (d->>'date')::date between pg_temp.month_start()+2 and pg_temp.month_start()+4 and (d->>'scheduled')::integer=0),3::bigint,
+  'start, middle and last period date all have zero scheduled minutes');
+delete from public.studio_days_off where studio_id=pg_temp.pid(1) and name='Period capacity test';
+
 -- The first live-period calculation is provisional only: it contributes no
 -- recognized studio expense or saved allocation revision.
 select set_config('test.provisional_open_digest',private.finance_automatic_labor_basis(pg_temp.pid(1),pg_temp.pid(21))->>'digest',true);

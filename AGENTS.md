@@ -278,6 +278,15 @@ Do not run broad database regressions for unrelated UI/application changes.
 
 Do not infer remote deployment state from repository files alone.
 
+## Temporary artifacts
+
+Create user-facing temporary mockups, previews, templates, and comparison files
+inside this workspace's `tmp/` directory, using descriptive filenames or task
+subdirectories. Do not put these deliverables in the system `/tmp` directory or
+outside the active workspace. Link to the workspace-local files in replies so
+the user can open them directly. Keep them available until the user asks for
+cleanup.
+
 ## Documentation maintenance
 
 Update documentation only when a completed change affects stable information

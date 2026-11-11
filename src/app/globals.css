@@ -256,6 +256,38 @@ textarea {
   accent-color: var(--ui-action-primary);
 }
 
+/* Shared by Button outline, shell actions, and native outlined controls.
+   Semantic actions can override the interaction colors without copying states. */
+.ui-outline-control {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.ui-outline-danger {
+  --ui-control-interaction-background: var(--ui-danger-surface);
+  --ui-control-interaction-border: var(--ui-danger-border);
+  --ui-control-interaction-text: var(--ui-danger-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-outline-control:where(:not(:disabled):not([aria-disabled="true"]):not([aria-pressed="true"]):not([data-state="on"]):not([data-holding="true"])):hover {
+    background-color: var(--ui-control-interaction-background, var(--ui-surface-strong));
+    border-color: var(--ui-control-interaction-border, var(--ui-text-muted));
+    color: var(--ui-control-interaction-text, var(--ui-text));
+  }
+}
+
+.ui-outline-control:where(:not(:disabled):not([aria-disabled="true"])):is([data-state="open"], [aria-expanded="true"]) {
+  background-color: var(--ui-control-interaction-background, var(--ui-surface-strong));
+  border-color: var(--ui-control-interaction-border, var(--ui-text-muted));
+  color: var(--ui-control-interaction-text, var(--ui-text));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-outline-control { transition: none; }
+}
+
+:root[data-motion="off"] .ui-outline-control { transition: none; }
+
 *,
 *::before,
 *::after {
@@ -336,12 +368,188 @@ body,
 
 .calendar-week-grid > :last-child { border-right-width: 0; }
 
+.calendar-toolbar {
+  --calendar-control-height: 2.75rem;
+}
+
+.calendar-toolbar-control {
+  height: var(--calendar-control-height);
+  min-height: var(--calendar-control-height);
+  border-radius: var(--ui-radius-control);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+
+.calendar-toolbar-icon {
+  width: var(--calendar-control-height);
+  padding-inline: 0;
+}
+
+.calendar-toolbar-views {
+  border: 1px solid var(--ui-border-strong);
+}
+
+.calendar-toolbar-views > button {
+  height: 100%;
+  min-height: 0;
+  font: inherit;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.calendar-toolbar-views > button[aria-pressed="true"] {
+  cursor: default;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .calendar-toolbar { --calendar-control-height: 2rem; }
+}
+
+.calendar-header-primary {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--ui-action-primary);
+}
+
+.calendar-header-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-action-primary) 16%, transparent),
+    0 5px 10px color-mix(in srgb, var(--ui-action-primary) 28%, transparent),
+    0 10px 20px color-mix(in srgb, var(--ui-action-primary) 16%, transparent);
+  transition: opacity 180ms ease;
+}
+
+:root[data-theme="dark"] .calendar-header-primary::after {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ui-action-primary) 24%, transparent),
+    0 0 12px 2px color-mix(in srgb, var(--ui-action-primary) 22%, transparent),
+    0 0 24px color-mix(in srgb, var(--ui-action-primary) 12%, transparent);
+}
+
+.calendar-header-primary:not(:disabled):focus-visible::after { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .calendar-toolbar-views > button[aria-pressed="false"]:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--ui-text) 20%, var(--ui-surface-muted));
+    color: var(--ui-text);
+  }
+
+  .calendar-header-primary:not(:disabled):hover::after { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-toolbar-views > button,
+  .calendar-header-primary::after { transition: none; }
+}
+
+:root[data-motion="off"] .calendar-toolbar-views > button,
+:root[data-motion="off"] .calendar-header-primary::after { transition: none; }
+
+.company-days-off-view {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1), transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .company-days-off-view { opacity: 0; transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .company-days-off-view { transition: none; }
+}
+
+:root[data-motion="off"] .company-days-off-view { transition: none; }
+
+.calendar-now-indicator {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 10;
+  height: 0;
+  color: var(--ui-danger-solid);
+  pointer-events: none;
+}
+
+/* Both shapes share the exact time coordinate, independent of border thickness. */
+.calendar-now-indicator::before,
+.calendar-now-indicator::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  background: currentColor;
+}
+
+.calendar-now-indicator::before {
+  inset-inline: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.calendar-now-indicator::after {
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  transform: translate(-50%, -50%);
+}
+
 .calendar-week-timeline {
+  /* The outer week viewport owns horizontal scrolling, including on mobile. */
+  overflow-x: hidden;
   scrollbar-color: var(--ui-border-strong) transparent;
 }
 
 .calendar-week-timeline::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Reveal only arriving events; the calendar grid stays still. */
+.calendar-events [data-instaload-arrival] {
+  animation: calendar-event-enter 200ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .calendar-events [data-instaload-arrival]:nth-child(2 of [data-instaload-arrival]),
+  .calendar-events [data-week-segment]:nth-child(2 of [data-week-segment]) [data-instaload-arrival] {
+    animation-delay: 30ms;
+  }
+
+  .calendar-events [data-instaload-arrival]:nth-child(n + 3 of [data-instaload-arrival]),
+  .calendar-events [data-week-segment]:nth-child(n + 3 of [data-week-segment]) [data-instaload-arrival] {
+    animation-delay: 60ms;
+  }
+}
+
+@keyframes calendar-event-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes calendar-event-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-events [data-instaload-arrival] {
+    animation-name: calendar-event-fade;
+    animation-delay: 0ms;
+  }
+}
+
+:root[data-motion="off"] .calendar-events [data-instaload-arrival],
+.calendar-events [data-instaload-arrival]:focus,
+.calendar-events [data-instaload-arrival]:active,
+.calendar-events [data-editing] [data-instaload-arrival] {
+  animation: none;
 }
 
 /* Keep the native hit area while painting only a slim thumb, without arrow buttons. */
@@ -535,16 +743,6 @@ body,
 ::selection {
   background: var(--ui-action-primary);
   color: var(--ui-action-primary-text);
-}
-
-.header-icon-control:hover {
-  border-color: var(--ui-border);
-  color: var(--ui-text-muted);
-}
-
-:root[data-theme="dark"] .header-icon-control:hover {
-  border-color: var(--ui-text-muted);
-  color: var(--ui-text);
 }
 
 .theme-switch__icon {

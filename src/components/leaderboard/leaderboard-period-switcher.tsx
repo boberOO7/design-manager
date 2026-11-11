@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { LeaderboardMonthTimeline } from "@/components/leaderboard/leaderboard-month-timeline";
+import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { getKyivPeriodLabel, parseLeaderboardMonthRange, type LeaderboardMonthRange, type LeaderboardPeriod, type LeaderboardPeriodMode } from "@/lib/productivity";
 
@@ -52,10 +53,10 @@ export function LeaderboardPeriodSwitcher({ period, initialRange, locale }: { pe
     ]} value={selectedMode} onValueChange={changeMode} />
     {selectedMode === "custom" ? <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button type="button" aria-label={t("chooseMonthRange")} aria-expanded={open} aria-haspopup="dialog" className="flex h-10 max-w-full items-center gap-2 rounded-[var(--ui-radius-control)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-3 text-sm font-medium text-[var(--ui-text)] transition-colors duration-200 hover:bg-[var(--ui-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none">
+        <Button type="button" variant="outline" aria-label={t("chooseMonthRange")} aria-expanded={open} aria-haspopup="dialog" className="max-w-full gap-2 px-3 font-medium text-[var(--ui-text)]">
           <CalendarRange className="size-4 shrink-0 text-[var(--ui-text-secondary)]" aria-hidden="true" />
           <span className="truncate capitalize">{rangeLabel}</span>
-        </button>
+        </Button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content aria-label={t("chooseMonthRange")} align="end" sideOffset={6} collisionPadding={8} className="z-[80] w-[min(23rem,calc(100vw-1rem))] rounded-[var(--ui-radius-panel)] border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-3 text-[var(--ui-text)] shadow-[var(--ui-shadow-popover)] motion-safe:data-[state=open]:animate-[checklist-picker-in_180ms_ease-out] motion-safe:data-[state=closed]:animate-[people-picker-out_160ms_ease-in]">

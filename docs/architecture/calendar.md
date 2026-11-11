@@ -34,9 +34,14 @@ presentation-only and does not alter stored timestamps or Kyiv timezone rules.
 
 ## URL state and refresh ownership
 
-Date and view select the server-loaded range. Person, project, mine, and source
-filters use that loaded collection and replace URL history locally; they do not
-request a new range. Direct URLs and Back/Forward restore those filters.
+Each date anchor loads one authorized snapshot covering the union of the 42-day
+Month grid and the 30-day Agenda. This also covers Week, including late-month
+Agenda dates outside the Month grid. View tabs push URL history locally and
+reuse the snapshot without another server read, even while the initial stream
+is pending. Date changes use server navigation. Pending-request badges count
+only requests overlapping the active view's range.
+Person, project, mine, and source filters use the same collection and replace
+URL history locally. Direct URLs and Back/Forward restore the view and filters.
 Event/request notification links remain server navigation, including the explicit
 `refresh` token used to reopen refreshed details.
 
@@ -55,6 +60,25 @@ Tasks still load when hidden by a source filter, so local toggles need no fetch.
 
 Private review notes load independently of linked day-off details and their
 dependent compensation-event read.
+
+## Company days off
+
+`studio_days_off.date` is the inclusive start; `end_date` is the inclusive end.
+Legacy rows with a null end cover only their start date. A period retains one
+record and ID through creation, editing and deletion; separately selected dates
+create individual records in one atomic insert. Existing adjacent days are not
+automatically merged into periods.
+
+Active members can read company days off; only active studio administrators can
+write them. Column grants and RLS remain the boundary. A per-studio GiST exclusion
+constraint rejects overlapping date ranges, including concurrent writes.
+
+The annual manager includes periods overlapping the selected year. Calendar
+views receive one multi-day all-day item. Worklog/reminder, team activity and
+profile queries load overlapping periods and expand only their requested date
+window. Both Finance labor basis functions exclude every covered date from
+scheduled minutes. Successful mutations enqueue the existing automatic-labor
+recalculation once per request.
 
 ## Semantic event types
 

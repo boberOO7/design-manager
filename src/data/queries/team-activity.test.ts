@@ -29,7 +29,7 @@ describe("team activity month query", () => {
     const calls: Array<{ table: string; field: string; value: unknown; op: string }> = [];
     const selections: Array<{ table: string; columns: string }> = [];
     const from = vi.fn((table: string) => ({
-      select: vi.fn(function (this: unknown, columns: string) { selections.push({ table, columns }); return this; }), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), or: vi.fn().mockReturnThis(),
+      select: vi.fn(function (this: unknown, columns: string) { selections.push({ table, columns }); return this; }), order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), or: vi.fn(function (this: unknown, value: string) { calls.push({ table, field: "or", value, op: "or" }); return this; }),
       eq: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "eq" }); return this; }),
       gte: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "gte" }); return this; }),
       lt: vi.fn(function (this: unknown, field: string, value: unknown) { calls.push({ table, field, value, op: "lt" }); return this; }),
@@ -53,7 +53,9 @@ describe("team activity month query", () => {
     expect(calls).toContainEqual({ table: "time_off_requests", field: "cancelled_at", value: null, op: "is" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "start_date", value: next, op: "lt" });
     expect(calls).toContainEqual({ table: "time_off_requests", field: "end_date", value: `${month}-01`, op: "gte" });
-    expect(calls).toContainEqual({ table: "studio_days_off", field: "date", value: `${month}-01`, op: "gte" });
+    expect(selections).toContainEqual({ table: "studio_days_off", columns: "date,end_date" });
+    expect(calls).toContainEqual({ table: "studio_days_off", field: "or", op: "or", value: `end_date.gte.${month}-01,and(end_date.is.null,date.gte.${month}-01)` });
+    expect(calls.some(call => call.table === "studio_days_off" && call.field === "date" && call.op === "gte")).toBe(false);
     expect(calls).toContainEqual({ table: "studio_days_off", field: "date", value: next, op: "lt" });
     expect(calls).toContainEqual({ table: "review_timer_sessions", field: "studio_id", value: "studio", op: "eq" });
     expect(calls).toContainEqual({ table: "calendar_events", field: "studio_id", value: "studio", op: "eq" });
