@@ -122,8 +122,9 @@ rows without `voided_at`.
   zero-hour days. Task, review, and admin-only internal rows share the atomic save
   RPC, selected work date, and daily/weekly summaries.
 - `work_log_entries.internal_activity_type` identifies internal work without a
-  task, review round, project, or Calendar event. Initially `team_walkthrough`;
-  future types require extending the constraint and application labels.
+  task, review round, project, or Calendar event: `team_walkthrough` or
+  `studio_work`. Both share the Internal work statistics category; future types
+  require extending the constraint and application labels.
 - Internal minutes enter employee/team time totals separately, without task/m²
   credit or project direct-labor attribution. They enter the existing labor
   normalization denominator, like internal-project time, without project shares.

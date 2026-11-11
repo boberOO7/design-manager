@@ -23,6 +23,33 @@ describe("Work Log internal activities and conservative suggestions", () => {
   }
   const internal = { activity_kind: "internal", internal_activity_type: "team_walkthrough", task_id: null, review_round_id: null, minutes: 45 };
 
+  it("saves studio work alongside walkthroughs and keeps their time in the same internal total", async () => {
+    const { admin, assignee } = fixture;
+    const studio = { ...internal, internal_activity_type: "studio_work", minutes: 90 };
+    expect((await assignee.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [studio], p_timer_snapshot: {} })).error?.message).toContain("administrators");
+    await admin.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [internal, studio], p_timer_snapshot: {} }).throwOnError();
+    scope(admin, true);
+    const day = await getDailyWorkLog(today);
+    expect(day?.rows).toHaveLength(2);
+    expect(day?.rows).toContainEqual(expect.objectContaining({ ...studio, projectId: null, stage: null }));
+    expect(await getEmployeeWorkStatistics(fixture.studioId, admin.id)).toMatchObject({ internalMinutes: 135, totalMinutes: 135, taskMinutes: 0, reviewMinutes: 0 });
+    expect((await getWeeklyWorkLog(today))?.totals).toMatchObject({ internalMinutes: 135, totalMinutes: 135 });
+    const stored = (await admin.client.from("work_log_entries").select("id,internal_activity_type,minutes").eq("user_id", admin.id).throwOnError()).data;
+    const studioRow = stored.find(row => row.internal_activity_type === "studio_work");
+    expect(studioRow).toBeDefined();
+    for (const invalid of [{ internal_activity_type: null }, { internal_activity_type: "unknown" }, { task_id: fixture.taskId }]) {
+      expect((await admin.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [{ ...studio, ...invalid }], p_timer_snapshot: {} })).error).not.toBeNull();
+    }
+    expect((await admin.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [studio, studio], p_timer_snapshot: {} })).error).not.toBeNull();
+    expect((await admin.client.from("work_log_entries").select("id,internal_activity_type,minutes").eq("user_id", admin.id).throwOnError()).data).toEqual(stored);
+    expect((await assignee.client.from("work_log_entries").select("id").eq("user_id", admin.id).throwOnError()).data).toEqual([]);
+    await admin.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [{ ...studio, minutes: 120 }], p_timer_snapshot: {} }).throwOnError();
+    expect((await admin.client.from("work_log_entries").select("id,internal_activity_type,minutes").eq("user_id", admin.id).single().throwOnError()).data)
+      .toEqual({ ...studioRow, minutes: 120 });
+    await admin.client.rpc("save_daily_work_log", { p_work_date: today, p_entries: [], p_timer_snapshot: {} }).throwOnError();
+    expect((await getDailyWorkLog(today))?.rows).toEqual([]);
+  });
+
   it("allows only active admins to create, reopen, edit and remove internal time", async () => {
     const { admin, assignee, outsider } = fixture;
     for (const account of [assignee, outsider]) {

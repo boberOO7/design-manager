@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectItem } from "@/components/ui/select";
 import { addCalendarDays, instantToDateOnly, parseDateOnly, startOfMondayWeek } from "@/lib/calendar";
-import { dailyWorkLogSchema, groupWorkLogRows, isWorkLogDateEditable, previewWorkLogWeek, summarizeLoggedTime, weeklyWorkLogSchema, workLogInputSchema, workLogRowKey, type WeeklyWorkLog } from "@/lib/work-log";
+import { dailyWorkLogSchema, groupWorkLogRows, INTERNAL_WORK_TYPES, isWorkLogDateEditable, previewWorkLogWeek, summarizeLoggedTime, weeklyWorkLogSchema, workLogInputSchema, workLogRowKey, type WeeklyWorkLog } from "@/lib/work-log";
 import { WorkLogGroup } from "./work-log-group";
 import { WorkLogWeek } from "./work-log-week";
 import type { DailyWorkLog } from "@/data/queries/work-log";
@@ -32,6 +32,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
   const [rows, setRows] = useState<DailyWorkLog["rows"]>([]);
   const [adding, setAdding] = useState(false);
   const [addingOthers, setAddingOthers] = useState(false);
+  const [addingInternal, setAddingInternal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -44,7 +45,7 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoadingDay(true); setError(""); setAdding(false); setAddingOthers(false); setDirty(false);
+    setLoadingDay(true); setError(""); setAdding(false); setAddingOthers(false); setAddingInternal(false); setDirty(false);
     void fetch(`/api/work-log?date=${date}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("Unable to load log");
       const log = dailyWorkLogSchema.parse(await response.json());
@@ -169,14 +170,23 @@ export function WorkLogDialog({ onClose, initialDate, onSaved }: {
           </section>;
         }) : <p className="text-sm text-[var(--ui-text-muted)]">{t("empty")}</p>}
         <div className="space-y-2">
-          <Button type="button" variant="ghost" size="sm" disabled={saving || !available.length} aria-expanded={adding} onClick={() => { setAdding(value => !value); setAddingOthers(false); }}><Plus aria-hidden className="mr-1 size-4" />{t("addWork")}</Button>
+          <Button type="button" variant="ghost" size="sm" disabled={saving || !available.length} aria-expanded={adding} onClick={() => { setAdding(value => !value); setAddingOthers(false); setAddingInternal(false); }}><Plus aria-hidden className="mr-1 size-4" />{t("addWork")}</Button>
           {data.canLogInternalWork ? <Button type="button" variant="ghost" size="sm"
-            disabled={editorDisabled || rows.some(row => row.internal_activity_type === "team_walkthrough")}
-            onClick={() => {
-              setDirty(true);
-              setRows(current => [...current, { activity_kind: "internal", internal_activity_type: "team_walkthrough", task_id: null,
-                review_round_id: null, minutes: 0, projectId: null, stage: null, stageName: null, title: null, projectName: null, roundNumber: null }]);
-            }}><Plus aria-hidden className="mr-1 size-4" />{t("internalWork")}</Button> : null}
+            disabled={editorDisabled || INTERNAL_WORK_TYPES.every(type => rows.some(row => row.internal_activity_type === type))}
+            aria-expanded={addingInternal} onClick={() => { setAddingInternal(value => !value); setAdding(false); }}
+          ><Plus aria-hidden className="mr-1 size-4" />{t("internalWork")}</Button> : null}
+          {data.canLogInternalWork ? <div aria-hidden={!addingInternal} inert={!addingInternal}
+            className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${addingInternal ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+            <div className="min-h-0 overflow-hidden"><div className="flex flex-wrap gap-1">
+              {INTERNAL_WORK_TYPES.map(type => <Button key={type} type="button" variant="ghost" size="sm"
+                disabled={editorDisabled || rows.some(row => row.internal_activity_type === type)}
+                onClick={() => {
+                  setDirty(true); setAddingInternal(false);
+                  setRows(current => [...current, { activity_kind: "internal", internal_activity_type: type, task_id: null,
+                    review_round_id: null, minutes: 0, projectId: null, stage: null, stageName: null, title: null, projectName: null, roundNumber: null }]);
+                }}>{t(`internal_${type}`)}</Button>)}
+            </div></div>
+          </div> : null}
           <div aria-hidden={!adding} inert={!adding} className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${adding ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
             <div className="min-h-0 overflow-hidden"><div className="space-y-2">
               {addingOthers ? <p className="text-xs font-medium text-[var(--ui-text-secondary)]">{t("otherStudioTasks")}</p> : null}

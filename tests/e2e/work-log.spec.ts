@@ -628,6 +628,7 @@ test("admin internal work persists while historical project entry creates no tas
   const add = log.getByRole("button", { name: uk.WorkLog.internalWork, exact: true });
   await expect(add).toBeEnabled();
   await add.click();
+  await log.getByRole("button", { name: uk.WorkLog.internal_team_walkthrough, exact: true }).click();
   const row = log.locator('[data-work-log-row="internal:team_walkthrough"]');
   await expect(row).toContainText(uk.WorkLog.internal_team_walkthrough);
   await expect(log.getByRole("region", { name: uk.WorkLog.internalWork, exact: true })).toBeVisible();

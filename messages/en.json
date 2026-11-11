@@ -481,9 +481,6 @@
     }
   },
   "Navigation": {
-    "sidebarVariant": "Sidebar layout",
-    "sidebarClassic": "Classic",
-    "sidebarNew": "New",
     "statistics": "Statistics",
     "finance": "Finance",
     "home": "StudioFlow home",
@@ -6056,6 +6053,7 @@
   "WorkLog": {
     "internalWork": "Internal work",
     "internal_team_walkthrough": "Team walkthrough",
+    "internal_studio_work": "Studio work",
     "week": "Week",
     "weeklyTotal": "Weekly total:",
     "previousWeek": "Previous week",

@@ -30,11 +30,10 @@ describe("application shell cleanup", () => {
     expect(sidebar).not.toContain("PanelLeft");
     expect(sidebar).toContain('isExpanded ? "18rem" : "5rem"');
     expect(sidebar).toContain('className="relative hidden w-20 shrink-0 lg:block"');
-    expect(sidebar).toContain("absolute inset-y-0 left-0 z-40");
-    expect(sidebar).toContain("--sidebar-width");
+    expect(sidebar).toContain("top-[var(--ui-shell-header-height)] z-40");
     expect(sidebar).toContain("transition-[width,box-shadow]");
     expect(sidebar).toContain("duration-[320ms]");
-    expect(sidebar).not.toContain("motion-reduce:transition-none");
+    expect(sidebar).toContain("motion-reduce:transition-none");
     expect(sidebar).toContain("left-[23px]");
     expect(sidebar).toContain("pointer-events-none ml-[52px]");
     expect(sidebar).not.toContain("translate-x-[-0.25rem]");
@@ -46,7 +45,9 @@ describe("application shell cleanup", () => {
     expect(sidebar).toContain("onBlurCapture");
     expect(sidebar).not.toContain("studioName");
     expect(sidebar).toContain("StudioFlowMark");
-    expect(sidebar).toContain("SpaceLogoFull");
+    expect(sidebar).not.toContain("SpaceLogoFull");
+    expect(sidebar).not.toContain("SidebarVariant");
+    expect(sidebar).not.toContain("FlyoutSidebar");
     expect(sidebar).toContain('content={t(item.messageKey)}');
     expect(sidebar).not.toContain("toLocaleUpperCase");
     expect(sidebar).toContain('t("poweredBy", { product: "StudioFlow" })');

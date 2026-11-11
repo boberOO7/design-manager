@@ -8,6 +8,7 @@ import type { Database } from "@/types/database.types";
 import { taskStageSchema } from "@/lib/task-stages";
 
 type Tables = Database["public"]["Tables"];
+export const INTERNAL_WORK_TYPES = ["team_walkthrough", "studio_work"] as const;
 export type WorkLogEntry = Pick<Tables["work_log_entries"]["Row"], "activity_kind" | "task_id" | "review_round_id" | "minutes">
   & Partial<Pick<Tables["work_log_entries"]["Row"], "internal_activity_type" | "correction_id">>;
 export type ReviewStatisticsRound = Pick<Tables["task_review_rounds"]["Row"], "id" | "reviewer_id" | "completed_at" | "result"> & {
@@ -20,7 +21,7 @@ export type ReviewStatisticsSession = Pick<Tables["review_timer_sessions"]["Row"
 const entryFields = z.object({
   correction_id: z.uuid().nullable().optional(),
   activity_kind: z.enum(["task", "review", "internal"]), task_id: z.uuid().nullable(), review_round_id: z.uuid().nullable(),
-  internal_activity_type: z.enum(["team_walkthrough"]).nullable().default(null),
+  internal_activity_type: z.enum(INTERNAL_WORK_TYPES).nullable().default(null),
   minutes: z.number().int().positive().max(2147483647),
 });
 export const workLogTimerSnapshotSchema = z.object({ entries: z.array(entryFields),

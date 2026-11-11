@@ -307,6 +307,24 @@ it("counts internal work separately without project, review, or productivity cre
   expect(summarizeLoggedTime([internal], 30)).toEqual({ taskMinutes: 0, reviewMinutes: 0, internalMinutes: 45, calendarMinutes: 30, totalMinutes: 75 });
 });
 
+it("keeps studio work and team walkthrough separate while combining their internal time", () => {
+  const walkthrough = entry({ activity_kind: "internal", task_id: null, project_id: null, internal_activity_type: "team_walkthrough", minutes: 45 });
+  const studio = { ...walkthrough, id: "studio-entry", internal_activity_type: "studio_work", minutes: 90 };
+  const input = { date: studio.work_date, entries: [walkthrough, studio] };
+  expect(workLogInputSchema.safeParse(input).success).toBe(true);
+  expect(workLogInputSchema.safeParse({ ...input, entries: [studio, studio] }).success).toBe(false);
+  for (const invalid of [{ task_id: taskId }, { review_round_id: roundId }, { correction_id: taskId }, { internal_activity_type: "unknown" }]) {
+    expect(workLogInputSchema.safeParse({ ...input, entries: [{ ...studio, ...invalid }] }).success).toBe(false);
+  }
+  const report = buildWorkStatistics([walkthrough, studio, studio], [], [], { from: "2026-10-01", through: "2026-10-07" });
+  expect(report.totals).toMatchObject({ internalMinutes: 135, totalMinutes: 135, taskMinutes: 0, reviewMinutes: 0, reviewsCompleted: 0 });
+  expect(report.months[0]).toMatchObject(report.totals);
+  expect(report.employees[0]).toMatchObject(report.totals);
+  expect(report.projects).toEqual([]);
+  expect(report.tasks).toEqual([]);
+  expect(summarizeLoggedTime([walkthrough, studio], 30)).toMatchObject({ internalMinutes: 135, totalMinutes: 165 });
+});
+
 it("excludes creation, metadata, ambiguous legacy edits and other actors from task work", () => {
   const activity = { action_type: "task_updated", entity_id: taskId, actor_id: "worker", changes: {} };
   const ids = new Set([taskId]);

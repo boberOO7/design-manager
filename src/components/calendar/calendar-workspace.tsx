@@ -355,7 +355,7 @@ function CalendarShell({ initialView, initialDate, today, navigate, actions, fil
       {actions}
     </header>
     <section className={`${fillsViewport ? "calendar-fill-card " : ""}overflow-hidden rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-sm`}>
-      <div className="calendar-toolbar flex flex-col gap-3 border-b border-[var(--ui-border)] p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="calendar-toolbar flex flex-col gap-3 border-b border-[var(--ui-border)] p-3 sm:p-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2"><div className="flex items-center gap-2"><Button size="sm" className="calendar-toolbar-control calendar-toolbar-icon" variant="outline" aria-label={t("previous")} onClick={() => movePeriod(-1)}><ChevronLeft className="size-4" /></Button><Button size="sm" className="calendar-toolbar-control" variant="outline" onClick={() => navigate({ date: today })}>{t("today")}</Button><Button size="sm" className="calendar-toolbar-control calendar-toolbar-icon" variant="outline" aria-label={t("next")} onClick={() => movePeriod(1)}><ChevronRight className="size-4" /></Button></div><h2 className="min-w-0 text-sm font-medium text-[var(--ui-text-secondary)] sm:ml-2">{periodLabel}</h2></div>
         {filters}
       </div>
@@ -367,17 +367,17 @@ function CalendarShell({ initialView, initialDate, today, navigate, actions, fil
 
 function CalendarScopePlaceholder({ scope }: { scope: "project" | "person" }) {
   const t = useTranslations("Calendar");
-  return <Select disabled size="compact" variant="secondary" data-calendar-support-loading={scope} className={`calendar-toolbar-control w-[min(100%,12rem)] ${scope === "project" ? "sm:w-44" : "sm:w-40"}`} aria-label={t(scope === "project" ? "filterProject" : "filterPerson")} value=""><SelectItem value="">{t(scope === "project" ? "allProjects" : "allPeople")}</SelectItem></Select>;
+  return <Select disabled size="compact" variant="secondary" data-calendar-support-loading={scope} className={`calendar-toolbar-control w-[min(100%,12rem)] ${scope === "project" ? "sm:w-44 2xl:w-72" : "sm:w-40 2xl:w-64"}`} aria-label={t(scope === "project" ? "filterProject" : "filterPerson")} value=""><SelectItem value="">{t(scope === "project" ? "allProjects" : "allPeople")}</SelectItem></Select>;
 }
 
 function CalendarProjectFilter({ stream, value, onChange }: { stream: Promise<CalendarProject[]>; value: string; onChange: (value: string) => void }) {
   const t = useTranslations("Calendar"); const projects = use(stream);
-  return <Select size="compact" variant="secondary" className="calendar-toolbar-control w-[min(100%,12rem)] sm:w-44" aria-label={t("filterProject")} value={value} onValueChange={onChange}><SelectItem value="">{t("allProjects")}</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>;
+  return <Select size="compact" variant="secondary" className="calendar-toolbar-control w-[min(100%,12rem)] sm:w-44 2xl:w-72" aria-label={t("filterProject")} value={value} onValueChange={onChange}><SelectItem value="">{t("allProjects")}</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</Select>;
 }
 
 function CalendarPersonFilter({ stream, value, onChange }: { stream: Promise<CalendarPerson[]>; value: string; onChange: (value: string) => void }) {
   const t = useTranslations("Calendar"); const people = use(stream);
-  return <Select size="compact" variant="secondary" className="calendar-toolbar-control w-[min(100%,12rem)] sm:w-40" aria-label={t("filterPerson")} value={value} onValueChange={onChange}><SelectItem value="">{t("allPeople")}</SelectItem>{people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>;
+  return <Select size="compact" variant="secondary" className="calendar-toolbar-control w-[min(100%,12rem)] sm:w-40 2xl:w-64" aria-label={t("filterPerson")} value={value} onValueChange={onChange}><SelectItem value="">{t("allPeople")}</SelectItem>{people.map((person) => <SelectItem key={person.id} value={person.id}>{person.full_name}</SelectItem>)}</Select>;
 }
 
 function CalendarSupportedData({ core, projects, people, children }: { core: CalendarCoreData; children: (data: CalendarPageData) => React.ReactNode } & Pick<CalendarDataStreams, "projects" | "people">) {
@@ -750,8 +750,8 @@ function WeekView({ anchor, items, onItem, onCreate, onEventChange, editAccess, 
     </div>
     <div ref={scrollRef} onScroll={clearCreationPreview} className="calendar-week-timeline max-h-[36rem] overflow-y-auto">
       <div className="calendar-week-grid">
-        <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="border-r border-b border-[var(--ui-border)] pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-secondary)]" style={{ height: 60 * pixelsPerMinute }}>{formatCalendarClockTime(hour, 0, timeFormat)}{showUkraineTime ? <span className="block text-[9px] font-normal text-[var(--ui-text-secondary)]">UA {kyivGutterTime(dates[0], hour, timeZone, timeFormat)}</span> : null}</div>)}</div>
-        {dates.map((date, dayIndex) => <div key={date} data-week-date={date} className={`relative border-r border-[var(--ui-border)] ${onCreate && !loading ? "cursor-crosshair select-none" : ""} ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * pixelsPerMinute, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${60 * pixelsPerMinute - 1}px, var(--ui-calendar-gridline) ${60 * pixelsPerMinute}px)`, backgroundSize: `100% ${60 * pixelsPerMinute}px` }} onPointerDown={(event) => startSelection(event, date)} onPointerMove={moveSelection} onPointerLeave={clearCreationPreview} onPointerUp={finishSelection} onPointerCancel={cancelSelection} onLostPointerCapture={cancelSelection} onClick={(event) => {
+        <div className="sticky left-0 z-20 bg-[var(--ui-surface)]">{Array.from({ length: 24 }, (_, hour) => <div key={hour} className="border-r border-b border-[var(--ui-border)] last:border-b-0 pr-2 pt-1 text-right text-[10px] text-[var(--ui-text-secondary)]" style={{ height: 60 * pixelsPerMinute }}>{formatCalendarClockTime(hour, 0, timeFormat)}{showUkraineTime ? <span className="block text-[9px] font-normal text-[var(--ui-text-secondary)]">UA {kyivGutterTime(dates[0], hour, timeZone, timeFormat)}</span> : null}</div>)}</div>
+        {dates.map((date, dayIndex) => <div key={date} data-week-date={date} className={`relative border-r border-[var(--ui-border)] ${onCreate && !loading ? "cursor-crosshair select-none" : ""} ${dayIndex === currentTime?.dayIndex ? "bg-[var(--ui-surface-subtle)]" : ""}`} style={{ height: 24 * 60 * pixelsPerMinute, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${60 * pixelsPerMinute - 1}px, var(--ui-calendar-gridline) ${60 * pixelsPerMinute}px)`, backgroundSize: "100% calc(100% - 1px)", backgroundRepeat: "no-repeat" }} onPointerDown={(event) => startSelection(event, date)} onPointerMove={moveSelection} onPointerLeave={clearCreationPreview} onPointerUp={finishSelection} onPointerCancel={cancelSelection} onLostPointerCapture={cancelSelection} onClick={(event) => {
           if (event.target !== event.currentTarget || event.button !== 0 || loading || !onCreate) return;
           if (cardPointerDownRef.current) { cardPointerDownRef.current = false; return; }
           if (suppressClickRef.current) { suppressClickRef.current = false; return; }
