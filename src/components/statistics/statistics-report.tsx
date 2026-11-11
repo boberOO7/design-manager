@@ -14,14 +14,19 @@ import { OngoingProjects } from "./ongoing-projects";
 import { StatisticsMotion } from "./statistics-motion";
 import { StatisticsTooltipLink } from "./statistics-tooltip-link";
 import { TeamActivityCalendar } from "./team-activity-calendar";
+import { StatisticsPeopleProvider, StatisticsPeopleToggle } from "./statistics-people-scope";
 
 export async function StatisticsShell({ period, section, range, children }: {
   period: StatisticsPeriod; section: StatisticsSection; range?: StatisticsStreams["range"]; children: ReactNode;
 }) {
   const t = await getTranslations("Statistics");
-  return <div className="w-full min-w-0 space-y-4" data-testid="statistics-report">
+  const hasPeopleScope = section === "team" || section === "calendar";
+  return <StatisticsPeopleProvider><div className="w-full min-w-0 space-y-4" data-testid="statistics-report">
     <PageHeader title={t("title")} description={t("description")} className="flex-col items-start gap-3 lg:flex-row lg:items-end" action={
-      range ? <Suspense fallback={<div aria-hidden="true" className="instaload-blueprint h-[34px] w-56"><span className="instaload-mark mt-1 h-3 w-full" /><span className="instaload-mark mt-2 h-3 w-24" /></div>}><StatisticsRange pending={range} /></Suspense> : undefined} />
+      range || hasPeopleScope ? <div className="flex items-center gap-4">
+        {hasPeopleScope ? <StatisticsPeopleToggle /> : null}
+        {range ? <Suspense fallback={<div aria-hidden="true" className="instaload-blueprint h-[34px] w-56"><span className="instaload-mark mt-1 h-3 w-full" /><span className="instaload-mark mt-2 h-3 w-24" /></div>}><StatisticsRange pending={range} /></Suspense> : null}
+      </div> : undefined} />
 
     <div className="flex flex-wrap items-center justify-between gap-3">
     <nav aria-label={t("sections")} className="flex w-full flex-wrap gap-1 rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-muted)] p-1 sm:w-fit">
@@ -35,7 +40,7 @@ export async function StatisticsShell({ period, section, range, children }: {
     <div key={`${section}:${period}`} className="min-w-0 space-y-4">{children}
       {section !== "feedback" ? <details className="text-xs text-[var(--ui-text-muted)]"><summary className="w-fit cursor-pointer rounded py-2 font-medium transition-colors duration-[180ms] hover:text-[var(--ui-text)] focus-visible:outline-2 focus-visible:outline-[var(--ui-focus)]">{t("definitions")}</summary><dl className="mt-2 divide-y divide-[var(--ui-border)] rounded-[var(--ui-radius-control)] bg-[var(--ui-surface-subtle)] px-4 leading-5">{["history", section].map(key => <div key={key} className="grid gap-1 py-3 sm:grid-cols-[10rem_1fr]"><dt className="font-medium text-[var(--ui-text-secondary)]">{t(`method_${key}_label`)}</dt><dd>{t(`method_${key}`)}</dd></div>)}</dl></details> : null}
     </div>
-  </div>;
+  </div></StatisticsPeopleProvider>;
 }
 
 async function StatisticsRange({ pending }: { pending: StatisticsStreams["range"] }) {

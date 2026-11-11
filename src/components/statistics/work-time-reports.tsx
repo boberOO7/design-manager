@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown, LayoutGrid, List } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useStatisticsPeopleScope } from "./statistics-people-scope";
 import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,10 @@ export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<t
   const locale = useLocale();
   const [view, setView] = useState<"employees" | "projects" | "tasks">("employees");
   const [layout, setLayout] = useState<"list" | "grid">("list");
+  const { showFormer } = useStatisticsPeopleScope();
+  const employees = report.employees.filter(person => showFormer || person.active);
   const projectSeries = [workSeries[0], workSeries[1]];
-  const maximum = Math.max(1, ...(view === "employees" ? report.employees : report.projects).map(row => row.totalMinutes));
+  const maximum = Math.max(1, ...(view === "employees" ? employees : report.projects).map(row => row.totalMinutes));
   const metric = (label: string, value: string, amount: number, color = "var(--ui-text)") => <div key={label}><dt className="leading-5 text-[var(--ui-text-secondary)]">{label}</dt><dd data-work-metric className="mt-1 font-semibold tabular-nums" style={{ color: amount ? color : "var(--ui-text-muted)" }}>{value}</dd></div>;
   const hours = (minutes: number) => formatStatisticsDuration(minutes / 60);
   const count = (value: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
@@ -79,7 +82,7 @@ export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<t
     </div>
     {view === "tasks" ? <TaskTimeReport report={report} /> : <div id={view === "employees" ? "stats-work-people" : "stats-work-projects"} role="region" aria-label={t(view === "employees" ? "workByEmployees" : "workByProjects")}>
       <ul key={view} className={`grid items-start ${layout === "grid" ? "lg:grid-cols-2 lg:gap-x-5" : "grid-cols-1"}`}>
-        {view === "employees" ? report.employees.map(person => <WorkTimeRow key={person.id} layout={layout} name={person.name || t("formerEmployee")} href={`/team/${person.id}`} avatar inactive={!person.active}
+        {view === "employees" ? employees.map(person => <WorkTimeRow key={person.id} layout={layout} name={person.name || t("formerEmployee")} href={`/team/${person.id}`} avatar inactive={!person.active}
           totalMinutes={person.totalMinutes} maximum={maximum} segments={workSeries.map(item => ({ key: item.key, minutes: person[item.key], color: item.color }))}>
           {workSeries.map(item => metric(t(item.label), hours(person[item.key]), person[item.key], item.color))}
           {metric(t("reviewsCompleted"), count(person.reviewsCompleted), person.reviewsCompleted)}
@@ -90,6 +93,7 @@ export function WorkTimeReports({ report, monthlyChart }: { report: ReturnType<t
           {projectSeries.map(item => metric(t(item.label), hours(project[item.key]), project[item.key], item.color))}
         </WorkTimeRow>)}
       </ul>
+      {view === "employees" && !employees.length ? <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noEmployeesInScope")}</p> : null}
       {view === "projects" && !report.projects.length ? <p className="px-5 pb-4 text-xs text-[var(--ui-text-muted)]">{t("noProjectWorkTime")}</p> : null}
     </div>}
     <AnimatedDisclosure title={t("workMonthlyTrend")} className="border-t border-[var(--ui-border)] px-5 py-1">

@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/data/queries/active-studio-admin", () => ({ getActiveStudioAdmin:mocks.admin }));
 vi.mock("@/lib/supabase/server", () => ({ createClient:mocks.client }));
 import { getFinanceMovements } from "./finance";
+import { emptyMovementFilters } from "@/lib/finance-movement-filters";
 
 describe("effective movement pagination", () => {
   beforeEach(() => {
@@ -15,7 +16,7 @@ describe("effective movement pagination", () => {
         : table==="finance_movement_corrections" ? {data:[{original_movement_id:"original",replacement_movement_id:"corrected"}],error:null}
         : table==="finance_allocations" ? {data:[],error:null}
         : selection==="related_movement_id" ? {data:[],error:null}
-        : {data:[{id:"corrected",kind:"incoming",entries:[]},{id:"refund",kind:"refund",entries:[]}],count:155,error:null};
+        : {data:[{id:"corrected",kind:"transfer",entries:[{account_id:"source",currency:"USD",entry_role:"primary"},{account_id:"destination",currency:"UAH",entry_role:"destination"},{account_id:"source",currency:"USD",entry_role:"fee"}]},{id:"refund",kind:"refund",entries:[]}],count:155,error:null};
       const query={
         select:(...args:unknown[])=>{selection=String(args[0]);mocks.calls.push({table,method:"select",args});return query;},
         eq:(...args:unknown[])=>{mocks.calls.push({table,method:"eq",args});return query;},
@@ -38,8 +39,15 @@ describe("effective movement pagination", () => {
     expect(mocks.calls.some(call=>call.table==="finance_movements"&&call.method==="range")).toBe(false);
   });
   it("allows explicit history to page the complete ledger", async () => {
-    expect((await getFinanceMovements(2,true))?.total).toBe(155);
+    expect((await getFinanceMovements(2,{ ...emptyMovementFilters, history: true }))?.total).toBe(155);
     expect(mocks.calls).toContainEqual({table:"finance_movements",method:"range",args:[50,99]});
     expect(mocks.calls.some(call=>call.table==="finance_current_movements")).toBe(false);
+  });
+  it("retains both transfer legs and fees when an account/currency filters parent IDs", async () => {
+    const ledger = await getFinanceMovements(1, { ...emptyMovementFilters, account: "source", currency: "USD" });
+    expect(ledger?.movements[0].entries.map(entry => entry.entry_role)).toEqual(["primary", "destination", "fee"]);
+    expect(mocks.calls).toContainEqual({ table: "finance_current_movements", method: "eq", args: ["matching_entries.account_id", "source"] });
+    expect(mocks.calls).toContainEqual({ table: "finance_current_movements", method: "eq", args: ["matching_entries.currency", "USD"] });
+    expect(mocks.calls.some(call => call.table === "finance_movements" && call.method === "eq" && String(call.args[0]).includes("entries"))).toBe(false);
   });
 });

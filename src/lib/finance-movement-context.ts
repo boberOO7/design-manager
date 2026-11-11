@@ -1,5 +1,31 @@
 import type { FinanceMovementContext } from "@/data/queries/finance-movement-context";
 import type { FinanceCategory } from "./finance-planning";
+import { financeMovementCategoryLabel } from "./finance-planning";
+import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
+import type { Database } from "@/types/database.types";
+
+export type MovementPresentationOptions = {
+  categories: FinanceCategory[];
+  projectCash?: Pick<FinanceProjectCash, "events" | "projects"> | null;
+  translate: (key: string) => string;
+  locale: string;
+};
+
+export function financeMovementPresentation(
+  movement: Pick<Database["public"]["Views"]["finance_current_movements"]["Row"], "id" | "description" | "category_id" | "category" | "kind">,
+  sources: FinanceMovementContext[],
+  { categories, projectCash, translate, locale }: MovementPresentationOptions,
+) {
+  const category = financeMovementCategoryLabel(movement.category_id, movement.category, categories, key => translate(`planning.defaults.${key}`));
+  const title = movement.description || (["account_opening", "balance_adjustment", "transfer"].includes(movement.kind ?? "") ? translate(`movements.kinds.${movement.kind}`) : category);
+  const sourceLabels = financeMovementContextLabels(sources, categories, title, translate,
+    date => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`)));
+  const projects = projectCash?.events.filter(event => event.movement_id === movement.id).flatMap(event => {
+    const name = projectCash.projects.find(project => project.id === event.project_id)?.name;
+    return name && name !== title && !sources.some(source => source.project?.project?.name === name) ? [name] : [];
+  }) ?? [];
+  return { title, category, context: [...new Set([...sourceLabels, ...projects])].join("; ") };
+}
 
 export function financeMovementContextLabels(
   sources: FinanceMovementContext[],

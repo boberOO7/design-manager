@@ -1,7 +1,7 @@
 "use client";
 import { ExpenseReceiptControl } from "./expense-receipt-control";
 
-import { ArrowLeftRight, ChevronDown, History, Pencil, Plus, Wallet } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, History, Info, Pencil, Plus, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { AutoResizeTextarea as Textarea } from "@/components/ui/auto-resize-textarea";
 import { FormField, Input } from "@/components/ui/form-field";
 import { Select, SelectItem } from "@/components/ui/select";
-import { PageHeader } from "@/components/shared/page-header";
 import { formatDateOnly } from "@/lib/utils";
 import { financeAmountText, financeAmountUnits, formatFinanceAmount, sortFinanceAccounts } from "@/lib/finance";
 import { FinanceActionForm } from "./finance-action-form";
@@ -24,10 +23,12 @@ import type { FinanceExpected } from "@/lib/finance-planning";
 import { financeCategoryLabel, financeMovementCategoryLabel } from "@/lib/finance-planning";
 import type { getFinanceData, FinanceMovementWithEntries } from "@/data/queries/finance";
 import type { FinanceSourceMovement } from "@/data/queries/finance-source-movement";
-import { AnimatedDisclosure } from "@/components/ui/animated-form-content";
+import { AnimatedDisclosure, AnimatedFormContent } from "@/components/ui/animated-form-content";
 import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
 import { projectCashSplitItemsSchema } from "@/lib/finance-profitability";
-import { financeMovementContextLabels } from "@/lib/finance-movement-context";
+import { financeMovementPresentation } from "@/lib/finance-movement-context";
+import { MovementFilters } from "./movement-filters";
+import { hasMovementFilters, invalidMovementRange, movementFiltersHref, MOVEMENT_PAGE_SIZE, type FinanceMovementFilters } from "@/lib/finance-movement-filters";
 import { Tooltip } from "@/components/ui/tooltip";
 
 import { loadFinancePayrollPayment, loadFinancePayrollPeriod } from "@/app/(app)/finance/schedules/payroll-actions";
@@ -36,6 +37,8 @@ import type { PayrollPayment, PayrollPeriod } from "@/lib/finance-payroll-earnin
 
 type Foundation = NonNullable<Awaited<ReturnType<typeof getFinanceData>>>;
 const panel = "rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]";
+const balanceLayout = "grid grid-cols-1 gap-x-8 lg:grid-cols-[12rem_minmax(0,1fr)]";
+const balanceCurrencyColumns = "grid grid-cols-2 gap-x-6 sm:gap-x-8 lg:grid-cols-4 lg:gap-x-12";
 
 
 type SplitRow = { projectId: string; amount: string };
@@ -227,7 +230,7 @@ function MovementEntryForm({ data, today, transfer, refund, correction, expected
   </FinanceActionForm>;
 }
 
-export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; history?:boolean; expected?:FinanceExpected|null; defaultAccountId?: string | null; returnHref?:string; sourceMovement?: FinanceSourceMovement | null; movementLinkUnavailable?: boolean; projectCash?: FinanceProjectCash | null }) {
+export function FinanceMovementsWorkspace(props: Foundation & { movements: FinanceMovementWithEntries[]; total: number; page: number; today: string; filters: FinanceMovementFilters; expected?:FinanceExpected|null; defaultAccountId?: string | null; returnHref?:string; sourceMovement?: FinanceSourceMovement | null; movementLinkUnavailable?: boolean; projectCash?: FinanceProjectCash | null }) {
   const t = useTranslations("Finance");
   const locale = useLocale();
   const router=useRouter();
@@ -244,12 +247,19 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     loadFinanceMovementHistory(historyId).then((rows) => { if (current) setHistoryRows(rows); }).catch(() => { if (current) setHistoryRows({ movements: [], error: true }); });
     return () => { current = false; };
   }, [historyId, props.sourceMovement?.id]);
+  const [balancesOpen, setBalancesOpen] = useState(false);
   const ready = Boolean(props.settings?.finalized_at);
+  const balanceTotals = props.currencies.flatMap(currency => {
+    const entries = props.balances.filter(balance => balance.currency === currency.code);
+    if (!entries.length) return [];
+    const amount = entries.some(entry => entry.recorded_balance === null) ? null : financeAmountText(entries.reduce((sum, entry) => sum + financeAmountUnits(entry.recorded_balance ?? "0", currency.minor_units), BigInt(0)), currency.minor_units);
+    return [{ currency: currency.code, amount }];
+  });
   const active = props.accounts.filter((account) => !account.archived_at);
   const cancelledHistoryIds = new Set(historyRows?.movements.filter((movement) => movement.kind === "reversal").map((movement) => movement.related_movement_id));
-  const money = (amount: number | string, code: string) => {
+  const money = (amount: number | string, code: string, style: "currency" | "decimal" = "currency") => {
     const currency = props.currencies.find((item) => item.code === code);
-    return currency ? formatFinanceAmount(amount, currency, locale) : `${amount} ${code}`;
+    return currency ? formatFinanceAmount(amount, currency, locale, style) : `${amount} ${code}`;
   };
   const openHistory = (id: string) => {
     if (props.sourceMovement?.id === id) setHistoryRows({ movements: props.sourceMovement.movements, error: false });
@@ -257,51 +267,58 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
     setHistoryId(id);
   };
   return <div className="w-full min-w-0 space-y-6">
-    <PageHeader title={t("movements.title")} description={t("movements.descriptionText")} />
-    <div className="flex items-center justify-between gap-3 text-sm"><span className="font-medium">{t(props.history ? "movements.history" : "movements.currentMovements")}</span><Link className="text-[var(--ui-text-secondary)] underline" href={props.history ? "/finance/movements" : "/finance/movements?history=1"}>{t(props.history ? "movements.currentMovements" : "movements.correctionHistory")}</Link></div>
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="flex items-center gap-1.5"><h1 className="text-2xl font-semibold text-[var(--ui-text)]">{t("movements.title")}</h1><Tooltip openOnClick content={t("movements.descriptionText")}><Button variant="ghost" size="compact" className="w-9 px-0" aria-label={t("movements.filters.about")}><Info className="size-4" aria-hidden="true" /></Button></Tooltip></div>
+      {ready ? <div className="flex flex-wrap gap-2"><Button size="compact" className="gap-2" disabled={!active.length} onClick={() => setEditor("incoming")}><Plus className="size-4" aria-hidden="true"/>{t("movements.filters.add")}</Button><Button size="compact" variant="outline" disabled={active.length<2} onClick={() => setEditor("transfer")}><ArrowLeftRight className="size-4" aria-hidden="true"/>{t("movements.kinds.transfer")}</Button></div> : null}
+    </header>
     {props.movementLinkUnavailable ? <p role="status" className="rounded-[var(--ui-radius-control)] border border-[var(--ui-border-subtle)] bg-[var(--ui-surface-subtle)] p-3 text-sm text-[var(--ui-text-secondary)]">{t("movements.sourceUnavailable")}</p> : null}
-    {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></p> : <>
-      <section aria-label={t("movements.recordedBalance")} className={panel}>
-        <h2 className="px-5 py-3 text-sm font-semibold">{t("movements.recordedBalance")}</h2>
-        <div className="grid border-t border-[var(--ui-border)] sm:grid-cols-2 xl:grid-cols-4">{props.balances.map((balance) => <div key={balance.id} className="flex min-w-0 items-center justify-between gap-3 border-b border-[var(--ui-border)] px-5 py-2.5 text-sm last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"><span className="min-w-0 truncate">{balance.name}{balance.archived_at ? <span className="ml-2 text-xs text-[var(--ui-text-muted)]">{t("movements.archived")}</span> : null}</span><span className="ui-numeric shrink-0 font-medium">{balance.recorded_balance !== null && balance.currency ? money(balance.recorded_balance, balance.currency) : "—"}</span></div>)}</div>
-      </section>
-      <div className="flex flex-wrap gap-2"><Button className="gap-2" disabled={!active.length} onClick={() => setEditor("incoming")}><Plus className="size-4" aria-hidden="true"/>{t("movements.add")}</Button><Button variant="outline" disabled={active.length<2} onClick={() => setEditor("transfer")}>{t("movements.transfer")}</Button></div>
-    </>}
+    {!ready ? <p className={`${panel} p-5 text-sm text-[var(--ui-text-secondary)]`}>{t("movements.setupRequired")} <Link className="underline" href="/finance/accounts">{t("movements.setupLink")}</Link></p> : <section aria-label={t("movements.recordedBalance")} className={panel}>
+      <div className="relative">
+        <button type="button" id="movement-balances-trigger" aria-label={t("movements.recordedBalance")} aria-describedby="movement-balance-totals" aria-expanded={balancesOpen} aria-controls="movement-account-balances" onClick={() => setBalancesOpen(!balancesOpen)} className={`${balanceLayout} w-full cursor-pointer items-center gap-y-3 rounded-[var(--ui-radius-panel)] px-4 py-3 text-left transition-colors duration-200 hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none sm:pr-14`}>
+          <span className="flex items-center gap-2 pr-10 text-sm font-medium text-[var(--ui-text-secondary)] lg:pr-0"><ChevronDown className={`size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${balancesOpen ? "rotate-180" : ""}`} aria-hidden="true" />{t("movements.recordedBalance")}</span>
+          <span id="movement-balance-totals" className={`${balanceCurrencyColumns} gap-y-3`}>{balanceTotals.map(balance => <span key={balance.currency} className="flex min-w-0 flex-col gap-0.5"><span className="text-xs text-[var(--ui-text-muted)]">{balance.currency}</span><span className="ui-numeric whitespace-nowrap text-sm font-semibold text-[var(--ui-text)]">{balance.amount === null ? "—" : money(balance.amount, balance.currency, "decimal")}</span></span>)}</span>
+        </button>
+        <Tooltip openOnClick content={t("movements.filters.balanceHelp")}><Button variant="ghost" size="compact" className="absolute right-2 top-2 size-9 px-0" aria-label={t("movements.filters.aboutBalances")}><Info className="size-4" aria-hidden="true" /></Button></Tooltip>
+      </div>
+      <AnimatedFormContent id="movement-account-balances" labelledBy="movement-balances-trigger" isOpen={balancesOpen}>
+        <div className={`${balanceLayout} border-t border-[var(--ui-border)] px-4 py-4 sm:pr-14`}><div className={`${balanceCurrencyColumns} gap-y-5 lg:col-start-2`}>{balanceTotals.map(group => <section key={group.currency} aria-label={group.currency} className="min-w-0">
+          <h2 className="mb-2 text-xs font-medium text-[var(--ui-text-muted)]">{group.currency}</h2>
+          <dl className="divide-y divide-[var(--ui-border-subtle)]">{props.accounts.filter(account => account.currency === group.currency).flatMap(account => {
+            const balance = props.balances.find(item => item.id === account.id);
+            return balance ? [<div key={balance.id} className="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 py-2 text-sm 2xl:grid-cols-[minmax(0,1fr)_auto]"><dt className="min-w-0 break-words text-[var(--ui-text-secondary)]">{balance.name}{balance.archived_at ? <span className="block text-xs text-[var(--ui-text-muted)]">{t("movements.archived")}</span> : null}</dt><dd className="ui-numeric whitespace-nowrap font-medium 2xl:text-right">{balance.recorded_balance !== null && balance.currency ? money(balance.recorded_balance, balance.currency, "decimal") : "—"}<span className="sr-only"> {group.currency}</span></dd></div>] : [];
+          })}</dl>
+        </section>)}</div></div>
+      </AnimatedFormContent>
+    </section>}
+    <MovementFilters filters={props.filters} accounts={props.accounts} categories={props.categories} currencies={props.currencies} total={props.total} today={props.today}/>
     <section aria-label={t("movements.history")} className={`${panel} overflow-hidden`}>
-      {props.movements.length ? <><div aria-hidden="true" className="hidden min-h-10 grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] items-center gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span>{t("movements.date")}</span><span>{t("movements.ledgerTitle")}</span><span>{t("movements.account")}</span><span>{t("movements.type")}</span><span className="text-right">{t("movements.amount")}</span><span/></div><ul className="divide-y divide-[var(--ui-border)]">{props.movements.map((movement) => {
+      {props.movements.length ? <><div aria-hidden="true" className="hidden min-h-10 grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(8rem,1fr)_7rem_minmax(9rem,auto)_1.25rem] items-center gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 text-xs font-medium text-[var(--ui-text-muted)] lg:grid"><span>{t("movements.date")}</span><span>{t("movements.ledgerTitle")}</span><span>{t("movements.account")}</span><span>{t("movements.type")}</span><span className="text-right">{t("movements.amount")}</span><span/></div><ul className="divide-y divide-[var(--ui-border)]">{props.movements.map((movement) => {
         const reversed = movement.reversed;
         const unresolved = movement.entries.some(entry => entry.reporting_amount === null);
         const primary = movement.entries.find((entry) => entry.entry_role === "primary");
         const destination = movement.entries.find((entry) => entry.entry_role === "destination");
         const activeOriginalAccount = active.some((account) => account.id === primary?.account_id);
-        const category=financeMovementCategoryLabel(movement.category_id,movement.category,props.categories,(key)=>t(`planning.defaults.${key}`));
-        const title=movement.description || (["account_opening","balance_adjustment","transfer"].includes(movement.kind)?t(`movements.kinds.${movement.kind}`):category);
-        const sourceLabels = financeMovementContextLabels(movement.context, props.categories, title, (key) => t(key),
-          (date) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`)));
-        const attributedProjects = props.projectCash?.events.filter(event => event.movement_id === movement.id)
-          .flatMap(event => {
-            const name = props.projectCash?.projects.find(project => project.id === event.project_id)?.name;
-            return name && name !== title && !movement.context.some(source => source.project?.project?.name === name) ? [name] : [];
-          }) ?? [];
-        const context = [...new Set([...sourceLabels, ...attributedProjects])].join("; ");
+        const { title, category, context } = financeMovementPresentation(movement, movement.context, { categories: props.categories, projectCash: props.projectCash, locale, translate: key => t(key) });
+        const secondary = [title !== category && movement.nature !== "balance" ? category : "", context].filter(Boolean).join(" · ");
         const accountName=(id?:string)=>props.accounts.find((account)=>account.id===id)?.name??"—";
         const accountText=movement.kind==="transfer"?`${accountName(primary?.account_id)} → ${accountName(destination?.account_id)}`:accountName(primary?.account_id);
         const displayMoney=(entry:typeof primary)=>{if(!entry)return "—";const formatted=money(entry.amount,entry.currency);return Number(entry.amount)>0?`+${formatted}`:formatted;};
         const absoluteMoney=(entry:typeof primary)=>entry?money(String(entry.amount).replace(/^-/,""),entry.currency):"—";
         const sameCurrencyTransfer=movement.kind==="transfer"&&primary?.currency===destination?.currency;
         const amountTone=["transfer","balance"].includes(movement.nature)?"text-[var(--ui-text)]":Number(primary?.amount??0)>0?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]";
-        return <li key={movement.id}><details className="group"><summary aria-label={t("movements.detailsNamed",{name:context ? `${title} · ${context}` : title})} className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[7rem_minmax(12rem,1.5fr)_minmax(10rem,1fr)_minmax(8rem,.8fr)_minmax(10rem,auto)_1.5rem] lg:py-2">
+        return <li key={movement.id}><details className="group"><summary aria-label={t("movements.detailsNamed",{name:context ? `${title} · ${context}` : title})} className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(8rem,1fr)_7rem_minmax(9rem,auto)_1.25rem] lg:py-2">
           <span className="col-start-1 row-start-2 text-xs text-[var(--ui-text-muted)] lg:col-start-1 lg:row-start-1">{formatDateOnly(movement.financial_date, locale)}<span className="lg:hidden"> · {t(`movements.kinds.${movement.kind}`)}</span></span>
           <span className="col-start-1 row-start-1 min-w-0 text-sm font-medium text-[var(--ui-text)] lg:col-start-2">
             <span className="block truncate">{title}{unresolved ? <span className="ml-2 text-xs font-normal text-[var(--ui-warning-text)]">{t("movements.valuationUnresolved")}</span> : null}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
-            {context ? <Tooltip content={context}><span tabIndex={0} className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{context}</span></Tooltip> : null}
+            {secondary ? <Tooltip content={secondary} onlyWhenTruncated><span tabIndex={0} className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{secondary}</span></Tooltip> : null}
           </span>
           <span className="col-start-1 row-start-3 min-w-0 truncate text-xs text-[var(--ui-text-secondary)] lg:col-start-3 lg:row-start-1 lg:text-sm">{accountText}</span>
-          <span className="hidden text-xs text-[var(--ui-text-secondary)] lg:col-start-4 lg:block">{t(`movements.kinds.${movement.kind}`)} · {t(`movements.natures.${movement.nature}`)}</span>
-          <span className={`ui-numeric col-start-2 row-span-3 row-start-1 whitespace-nowrap text-right text-sm font-semibold lg:col-start-5 lg:row-span-1 ${amountTone}`}>{movement.kind==="transfer"?(sameCurrencyTransfer?absoluteMoney(primary):`${absoluteMoney(primary)} → ${absoluteMoney(destination)}`):displayMoney(primary)}</span>
+          <span className="hidden text-xs text-[var(--ui-text-secondary)] lg:col-start-4 lg:block">{t(`movements.kinds.${movement.kind}`)}</span>
+          <span className={`ui-numeric col-start-2 row-span-3 row-start-1 whitespace-nowrap text-right text-sm font-semibold lg:col-start-5 lg:row-span-1 ${amountTone}`}>{movement.kind==="transfer"?(sameCurrencyTransfer?absoluteMoney(primary):<><span className="block">{absoluteMoney(primary)}</span><span className="block text-xs font-medium">→ {absoluteMoney(destination)}</span></>):displayMoney(primary)}</span>
           <ChevronDown className="col-start-3 row-span-3 row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none lg:col-start-6 lg:row-span-1" aria-hidden="true"/>
         </summary><div className="space-y-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm">
-          {title !== category && movement.nature !== "balance" ? <p className="text-[var(--ui-text-secondary)]">{category}</p> : null}
+          {movement.description ? <p className="whitespace-pre-wrap break-words">{movement.description}</p> : null}
+          <p className="text-xs text-[var(--ui-text-secondary)]">{[movement.nature !== "balance" ? category : "", t(`movements.natures.${movement.nature}`)].filter(Boolean).join(" · ")}</p>
           {context ? <p className="whitespace-pre-wrap break-words text-[var(--ui-text-secondary)]">{context}</p> : null}
           {!reversed && movement.kind === "outgoing" && movement.nature === "operating" && !movement.context.length && !["salary", "employee_bonus"].includes(props.categories.find(category => category.id === movement.category_id)?.default_key ?? "") ? <ExpenseReceiptControl kind="movement" sourceId={movement.id} baseCurrency={props.settings?.base_currency ?? "UAH"} today={props.today}/> : null}
           <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"><p>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency !== entry.reporting_currency && entry.reporting_amount !== null && entry.fx_source && entry.fx_effective_date ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>{entry.reporting_amount === null && entry.entry_role !== "fee" && !reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setValuing({ movement, currency: entry.currency, reportingCurrency: entry.reporting_currency })}>{t("movements.valueManually")}</Button> : null}</div>)}</div>
@@ -314,9 +331,12 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
             {!reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button> : null}
           </div>
         </div></details></li>;
-      })}</ul></> : <p className="p-5 text-sm text-[var(--ui-text-muted)]">{t("movements.empty")}</p>}
+      })}</ul></> : <div className="space-y-2 p-5 text-sm" role="status"><p className="font-medium">{t(invalidMovementRange(props.filters) ? "movements.filters.invalidRange" : hasMovementFilters(props.filters) ? "movements.filters.noResults" : "movements.empty")}</p>{hasMovementFilters(props.filters) ? <><p className="text-[var(--ui-text-secondary)]">{t("movements.filters.noResultsHelp")}</p><Button asChild variant="outline" size="compact"><Link href="/finance/movements">{t("movements.filters.reset")}</Link></Button></> : null}</div>}
     </section>
-    <nav aria-label={t("movements.pages")} className="flex justify-between text-sm">{props.page>1 ? <Link href={`/finance/movements?page=${props.page-1}${props.history ? "&history=1" : ""}`} className="underline">{t("movements.previous")}</Link> : <span />}{props.page*50<props.total ? <Link href={`/finance/movements?page=${props.page+1}${props.history ? "&history=1" : ""}`} className="underline">{t("movements.next")}</Link> : null}</nav>
+    <nav aria-label={t("movements.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+      <p className="ui-numeric text-xs text-[var(--ui-text-muted)]">{t("movements.filters.range", { from: props.total ? (props.page - 1) * MOVEMENT_PAGE_SIZE + 1 : 0, to: Math.min(props.page * MOVEMENT_PAGE_SIZE, props.total), total: props.total })}</p>
+      <div className="flex gap-2">{props.page > 1 ? <Button asChild variant="outline" size="compact"><Link href={movementFiltersHref(props.filters, props.page - 1)}>{t("movements.previous")}</Link></Button> : null}{props.page * MOVEMENT_PAGE_SIZE < props.total ? <Button asChild variant="outline" size="compact"><Link href={movementFiltersHref(props.filters, props.page + 1)}>{t("movements.next")}</Link></Button> : null}</div>
+    </nav>
     <Dialog isOpen={correcting !== null} closeDisabled={pending} onRequestClose={() => setCorrecting(null)} title={t("movements.correct")} closeLabel={t("movements.close")}>
       {correcting ? <div className="p-5"><EntryForm data={props} today={props.today} transfer={correcting.kind === "transfer"} correction={correcting} projectCash={props.projectCash} onSaved={() => setCorrecting(null)} onPending={setPending}/></div> : null}
     </Dialog>

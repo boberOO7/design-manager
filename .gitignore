@@ -14,8 +14,8 @@
 /coverage
 /test-results/
 /playwright-report/
-# Generated PDF previews and test artifacts
-/tmp/**/*.pdf
+# Local previews, screenshots, and temporary artifacts
+/tmp/
 
 # next.js
 /.next/

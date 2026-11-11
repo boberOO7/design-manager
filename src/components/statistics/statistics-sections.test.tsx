@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/uk.json";
 import { buildAttendanceStatistics } from "@/lib/statistics-attendance";
 import { TeamStatistics } from "./statistics-sections";
+import { StatisticsPeopleProvider } from "./statistics-people-scope";
 
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => createTranslator({ locale: "uk", messages, namespace: "Statistics" }),
@@ -23,7 +24,7 @@ async function table(compensated: number, otherAbsences = false, future = false,
   }
   if (future) employee.plannedMakeupHours = 2;
   const section = await TeamStatistics({ report, today: "2026-10-16" });
-  const markup = renderToStaticMarkup(<NextIntlClientProvider locale="uk" messages={messages}>{section}</NextIntlClientProvider>);
+  const markup = renderToStaticMarkup(<NextIntlClientProvider locale="uk" messages={messages}><StatisticsPeopleProvider>{section}</StatisticsPeopleProvider></NextIntlClientProvider>);
   const text = (html: string) => html.replace(/<[^>]*>/g, "").trim();
   const headers = [...markup.matchAll(/<th\b[^>]*scope="col"[^>]*>(.*?)<\/th>/g)].map(match => text(match[1]));
   const body = markup.match(/<tbody>(.*?)<\/tbody>/)?.[1] ?? "";
@@ -32,6 +33,20 @@ async function table(compensated: number, otherAbsences = false, future = false,
 }
 
 describe("employee time-off statistics table", () => {
+  it("hides former employees by default while preserving their contribution to studio totals", async () => {
+    const report = buildAttendanceStatistics([{
+      id: "former-vacation", user_id: "former", request_type: "vacation", status: "approved",
+      start_date: "2026-10-05", end_date: "2026-10-05", all_day: true, start_time: null, end_time: null,
+    }], [], [{ id: "current", name: "Поточний працівник", active: true }, { id: "former", name: "Колишній колега", active: false }],
+    { from: "2026-10-01", through: "2026-10-31" }, "2026-10-16T09:00:00Z");
+    const section = await TeamStatistics({ report, today: "2026-10-16" });
+    const markup = renderToStaticMarkup(<NextIntlClientProvider locale="uk" messages={messages}><StatisticsPeopleProvider>{section}</StatisticsPeopleProvider></NextIntlClientProvider>);
+    expect(markup).toContain('href="/team/current"');
+    expect(markup).not.toContain('href="/team/former"');
+    expect(markup).not.toContain("Колишній колега");
+    expect(markup).toContain('<span class="text-3xl">8:00</span>');
+  });
+
   it.each([false, true])("keeps days off, make-up, and debt adjacent with optional columns: %s", async optionalColumns => {
     const { headers, cells, markup } = await table(2.25, optionalColumns, optionalColumns);
     const dayOff = headers.indexOf("Відгули");

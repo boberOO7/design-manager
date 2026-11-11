@@ -13,6 +13,7 @@ import { getTeamActivityDayState, groupTeamActivityItems, shiftActivityMonth, te
 import { timeOffRequestTypeKey } from "@/lib/time-off-labels";
 import { statisticsPanel } from "./statistics-card";
 import { StatisticsInfo } from "./statistics-info";
+import { useStatisticsPeopleScope } from "./statistics-people-scope";
 
 const dayStateClasses: Record<TeamActivityDayState, string> = {
   missing: "bg-[var(--ui-surface-muted)]",
@@ -47,6 +48,8 @@ export function TeamActivityCalendar({ today }: { today: string }) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  const { showFormer } = useStatisticsPeopleScope();
+  const people = report?.people.filter(person => showFormer || person.active) ?? [];
   const current = report?.month === month ? report : null;
   const currentMonth = (report?.today ?? today).slice(0, 7);
   useEffect(() => {
@@ -93,7 +96,7 @@ export function TeamActivityCalendar({ today }: { today: string }) {
     <div aria-busy={loading} className="relative">
       {!current ? <p role="status" className={`${report ? "absolute inset-0" : ""} px-4 py-8 text-xs text-[var(--ui-text-muted)]`}>{loading ? t("activityLoading") : t("activityNoData")}</p> : null}
       {report ? <div className={current ? "" : "invisible"} aria-hidden={!current}>
-        {report.people.length ? <ActivityGrid report={report} liveAvailable={!failed && !!current} />
+        {people.length ? <ActivityGrid report={{ ...report, people }} liveAvailable={!failed && !!current} />
           : <p className="px-4 py-8 text-xs text-[var(--ui-text-muted)]">{t("activityNoPeople")}</p>}
       </div> : null}
     </div>
