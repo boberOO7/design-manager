@@ -1,5 +1,4 @@
 "use client";
-import { ExpenseReceiptControl } from "./expense-receipt-control";
 
 import { ArrowLeftRight, ChevronDown, History, Info, Pencil, Plus, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +27,7 @@ import type { FinanceProjectCash } from "@/data/queries/finance-project-cash";
 import { projectCashSplitItemsSchema } from "@/lib/finance-profitability";
 import { financeMovementPresentation } from "@/lib/finance-movement-context";
 import { MovementFilters } from "./movement-filters";
+import { MovementRowDisclosure } from "./movement-row-disclosure";
 import { hasMovementFilters, invalidMovementRange, movementFiltersHref, MOVEMENT_PAGE_SIZE, type FinanceMovementFilters } from "@/lib/finance-movement-filters";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -306,31 +306,29 @@ export function FinanceMovementsWorkspace(props: Foundation & { movements: Finan
         const absoluteMoney=(entry:typeof primary)=>entry?money(String(entry.amount).replace(/^-/,""),entry.currency):"—";
         const sameCurrencyTransfer=movement.kind==="transfer"&&primary?.currency===destination?.currency;
         const amountTone=["transfer","balance"].includes(movement.nature)?"text-[var(--ui-text)]":Number(primary?.amount??0)>0?"text-[var(--ui-success-text)]":"text-[var(--ui-danger-text)]";
-        return <li key={movement.id}><details className="group"><summary aria-label={t("movements.detailsNamed",{name:context ? `${title} · ${context}` : title})} className="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(8rem,1fr)_7rem_minmax(9rem,auto)_1.25rem] lg:py-2">
+        return <li key={movement.id}><MovementRowDisclosure description={movement.description} context={context} label={t("movements.detailsNamed",{name:context ? `${title} · ${context}` : title})} summaryClassName="grid min-h-16 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1.25rem] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 transition-colors hover:bg-[var(--ui-surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-focus)] motion-reduce:transition-none lg:min-h-12 lg:grid-cols-[6.5rem_minmax(0,1.5fr)_minmax(8rem,1fr)_7rem_minmax(9rem,auto)_1.25rem] lg:py-2" summary={<>
           <span className="col-start-1 row-start-2 text-xs text-[var(--ui-text-muted)] lg:col-start-1 lg:row-start-1">{formatDateOnly(movement.financial_date, locale)}<span className="lg:hidden"> · {t(`movements.kinds.${movement.kind}`)}</span></span>
           <span className="col-start-1 row-start-1 min-w-0 text-sm font-medium text-[var(--ui-text)] lg:col-start-2">
-            <span className="block truncate">{title}{unresolved ? <span className="ml-2 text-xs font-normal text-[var(--ui-warning-text)]">{t("movements.valuationUnresolved")}</span> : null}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
-            {secondary ? <Tooltip content={secondary} onlyWhenTruncated><span tabIndex={0} className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{secondary}</span></Tooltip> : null}
+            <span data-movement-title className="block truncate">{title}{unresolved ? <span className="ml-2 text-xs font-normal text-[var(--ui-warning-text)]">{t("movements.valuationUnresolved")}</span> : null}{reversed ? <span className="ml-2 rounded-full bg-[var(--ui-surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--ui-text-muted)]">{t("movements.reversed")}</span> : null}</span>
+            {secondary ? <Tooltip content={secondary} onlyWhenTruncated><span data-movement-context className="mt-0.5 block truncate text-xs font-normal text-[var(--ui-text-secondary)]">{secondary}</span></Tooltip> : null}
           </span>
           <span className="col-start-1 row-start-3 min-w-0 truncate text-xs text-[var(--ui-text-secondary)] lg:col-start-3 lg:row-start-1 lg:text-sm">{accountText}</span>
           <span className="hidden text-xs text-[var(--ui-text-secondary)] lg:col-start-4 lg:block">{t(`movements.kinds.${movement.kind}`)}</span>
           <span className={`ui-numeric col-start-2 row-span-3 row-start-1 whitespace-nowrap text-right text-sm font-semibold lg:col-start-5 lg:row-span-1 ${amountTone}`}>{movement.kind==="transfer"?(sameCurrencyTransfer?absoluteMoney(primary):<><span className="block">{absoluteMoney(primary)}</span><span className="block text-xs font-medium">→ {absoluteMoney(destination)}</span></>):displayMoney(primary)}</span>
-          <ChevronDown className="col-start-3 row-span-3 row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none lg:col-start-6 lg:row-span-1" aria-hidden="true"/>
-        </summary><div className="space-y-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-subtle)] px-4 py-3 text-sm">
-          {movement.description ? <p className="whitespace-pre-wrap break-words">{movement.description}</p> : null}
-          <p className="text-xs text-[var(--ui-text-secondary)]">{[movement.nature !== "balance" ? category : "", t(`movements.natures.${movement.nature}`)].filter(Boolean).join(" · ")}</p>
-          {context ? <p className="whitespace-pre-wrap break-words text-[var(--ui-text-secondary)]">{context}</p> : null}
-          {!reversed && movement.kind === "outgoing" && movement.nature === "operating" && !movement.context.length && !["salary", "employee_bonus"].includes(props.categories.find(category => category.id === movement.category_id)?.default_key ?? "") ? <ExpenseReceiptControl kind="movement" sourceId={movement.id} baseCurrency={props.settings?.base_currency ?? "UAH"} today={props.today}/> : null}
-          <div className="space-y-1 text-xs text-[var(--ui-text-muted)]">{movement.entries.map((entry) => <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"><p>{accountName(entry.account_id)}{entry.entry_role === "fee" ? ` (${t("movements.feeShort")})` : ""}: {displayMoney(entry)}{entry.currency !== entry.reporting_currency && entry.reporting_amount !== null && entry.fx_source && entry.fx_effective_date ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)} · ${t(`movements.sources.${entry.fx_source}`)} ${entry.fx_rate} · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>{entry.reporting_amount === null && entry.entry_role !== "fee" && !reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setValuing({ movement, currency: entry.currency, reportingCurrency: entry.reporting_currency })}>{t("movements.valueManually")}</Button> : null}</div>)}</div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <ChevronDown className="col-start-3 row-span-3 row-start-1 size-4 text-[var(--ui-text-muted)] transition-transform duration-150 group-data-[state=open]:rotate-180 motion-reduce:transition-none lg:col-start-6 lg:row-span-1" aria-hidden="true"/>
+        </>}>
+          <div className="space-y-2 text-xs leading-5 text-[var(--ui-text-secondary)] empty:hidden">{movement.entries.filter(entry => entry.entry_role === "fee" || entry.currency !== entry.reporting_currency || entry.reporting_amount === null).map((entry) => <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"><p>{entry.entry_role === "fee" ? `${t("movements.feeShort")} · ${accountName(entry.account_id)}: ` : movement.entries.length > 1 ? `${accountName(entry.account_id)}: ` : ""}{displayMoney(entry)}{entry.currency !== entry.reporting_currency ? entry.reporting_amount !== null ? ` ≈ ${money(entry.reporting_amount,entry.reporting_currency)}` : ` · ${t("movements.valuationUnresolved")}` : ""}{entry.currency !== entry.reporting_currency && entry.fx_rate ? ` · ${t("movements.rate", { currency: entry.currency, base: entry.reporting_currency })}: ${entry.fx_rate}` : ""}{entry.currency !== entry.reporting_currency && entry.fx_source ? ` · ${t(`movements.sources.${entry.fx_source}`)}` : ""}{entry.currency !== entry.reporting_currency && entry.fx_effective_date ? ` · ${formatDateOnly(entry.fx_effective_date,locale)}` : ""}</p>{entry.reporting_amount === null && entry.entry_role !== "fee" && !reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setValuing({ movement, currency: entry.currency, reportingCurrency: entry.reporting_currency })}>{t("movements.valueManually")}</Button> : null}</div>)}</div>
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <div className="flex flex-wrap items-center gap-2">
             {!reversed && movement.kind !== "reversal" ? <>
-              <Button size="sm" className="gap-1.5" onClick={() => setCorrecting(movement)}><Pencil className="size-3.5" aria-hidden="true"/>{t("movements.correct")}</Button>
-              {["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button size="sm" variant="outline" onClick={() => setEditor(movement)}>{t("movements.refund")}</Button> : null}
+              <Button size="compact" variant="outline" className="gap-1.5" onClick={() => setCorrecting(movement)}><Pencil className="size-3.5" aria-hidden="true"/>{t("movements.correct")}</Button>
+              {["incoming","outgoing"].includes(movement.kind) && activeOriginalAccount ? <Button size="compact" variant="outline" onClick={() => setEditor(movement)}>{t("movements.kinds.refund")}</Button> : null}
             </> : null}
-            {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => openHistory(movement.id)}><History className="size-4" aria-hidden="true"/>{t("movements.correctionHistory")}</Button> : null}
-            {!reversed && movement.kind !== "reversal" ? <Button size="sm" variant="ghost" className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button> : null}
+            {movement.supersedesId || reversed || movement.kind === "reversal" ? <Button size="compact" variant="ghost" className="gap-1.5" onClick={() => openHistory(movement.id)}><History className="size-4" aria-hidden="true"/>{t("movements.correctionHistory")}</Button> : null}
+            </div>
+            {!reversed && movement.kind !== "reversal" ? <Button size="compact" variant="ghost" className="text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]" onClick={() => setReversing(movement)}>{t("movements.reverse")}</Button> : null}
           </div>
-        </div></details></li>;
+        </MovementRowDisclosure></li>;
       })}</ul></> : <div className="space-y-2 p-5 text-sm" role="status"><p className="font-medium">{t(invalidMovementRange(props.filters) ? "movements.filters.invalidRange" : hasMovementFilters(props.filters) ? "movements.filters.noResults" : "movements.empty")}</p>{hasMovementFilters(props.filters) ? <><p className="text-[var(--ui-text-secondary)]">{t("movements.filters.noResultsHelp")}</p><Button asChild variant="outline" size="compact"><Link href="/finance/movements">{t("movements.filters.reset")}</Link></Button></> : null}</div>}
     </section>
     <nav aria-label={t("movements.pages")} className="flex flex-wrap items-center justify-between gap-3 text-sm">

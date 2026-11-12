@@ -156,7 +156,8 @@ migrations/tests.
   loads all its cycle fields and pages through the full history under admin RLS.
   Reads are reused within the authoritative candidate snapshot; mutation
   revalidation invalidates reuse even when a new cycle leaves the candidate's
-  `updated_at` unchanged. Dialog selection remains local, without URL navigation.
+  `updated_at` unchanged. Dialog selection remains local; Calendar deep links can
+  select the initial candidate.
 - Candidate creation and editor saves use guarded RPCs so contact and recruiting
   cycle fields commit or roll back together. Empty responsible-admin selection
   remains unassigned. Interview wall times are interpreted in StudioFlow's

@@ -151,7 +151,7 @@ export function itemOccursOn(item: CalendarItem, date: string): boolean {
 }
 
 export function calendarItemTimestamp(item: CalendarItem): number {
-  if ((item.source === "calendar_event" || item.source === "crm_follow_up") && !item.allDay) return new Date(item.startsAt).getTime();
+  if ((item.source === "calendar_event" || item.source === "crm_follow_up" || item.source === "crm_interview") && !item.allDay) return new Date(item.startsAt).getTime();
   return parseDateOnly(item.startDate).getTime();
 }
 
@@ -224,6 +224,7 @@ export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string)
       return item.personIds.includes(userId);
     case "task_deadline":
       return item.task.assigneeId === userId;
+    case "crm_interview":
     case "crm_follow_up":
       return item.responsibleAdminId === userId;
     case "time_off":
@@ -246,7 +247,7 @@ export function isCalendarItemRelevantToUser(item: CalendarItem, userId: string)
 export function filterCalendarItems(items: CalendarItem[], filters: CalendarFilters, currentUserId: string): CalendarItem[] {
   return sortCalendarItems(items.filter((item) => {
     if (item.source === "calendar_event" && !filters.events) return false;
-    if (item.source === "crm_follow_up" && !filters.events) return false;
+    if ((item.source === "crm_follow_up" || item.source === "crm_interview") && !filters.events) return false;
     if (item.source === "project_deadline" && !filters.projectDeadlines) return false;
     if (item.source === "task_deadline" && !filters.taskDeadlines) return false;
     if ((item.source === "time_off" || item.source === "time_off_request_admin") && !filters.timeOff) return false;
@@ -458,7 +459,7 @@ function getZonedDateTime(value: string | Date, timeZone: string): ZonedDateTime
   return { date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`, minute: parts.hour * 60 + parts.minute };
 }
 
-type TimedWeekItem = Extract<CalendarItem, { source: "calendar_event" | "crm_follow_up" | "time_off" | "time_off_request_admin" }>;
+type TimedWeekItem = Extract<CalendarItem, { source: "calendar_event" | "crm_follow_up" | "crm_interview" | "time_off" | "time_off_request_admin" }>;
 
 export type TimedWeekSegment = { itemId: string; segmentId: string; item: TimedWeekItem; date: string; startMinute: number; endMinute: number };
 export type TimedWeekLayoutSegment = TimedWeekSegment & { column: number; columnCount: number };
@@ -485,7 +486,7 @@ function timeToMinute(value: string): number | null {
 }
 
 function getTimedWeekItemRange(item: CalendarItem, timeZone: string): { item: TimedWeekItem; start: ZonedDateTime; end: ZonedDateTime } | null {
-  if (item.source === "calendar_event" || item.source === "crm_follow_up") {
+  if (item.source === "calendar_event" || item.source === "crm_follow_up" || item.source === "crm_interview") {
     if (item.allDay) return null;
     return { item, start: getZonedDateTime(item.startsAt, timeZone), end: getZonedDateTime(item.endsAt, timeZone) };
   }
@@ -502,6 +503,8 @@ export function getTimedWeekSegments(items: CalendarItem[], dates: string[], tim
     const range = getTimedWeekItemRange(item, timeZone);
     if (!range) return [];
     const { item: timedItem, start, end } = range;
+    // CRM stores only a start instant; give its marker minimum visual space without inventing a duration.
+    if (timedItem.source === "crm_interview") end.minute = Math.min(start.minute + 1, 24 * 60);
     const lastDate = end.minute === 0 ? addCalendarDays(end.date, -1) : end.date;
     const result: TimedWeekSegment[] = [];
     for (let date = start.date; date <= lastDate; date = addCalendarDays(date, 1)) {
@@ -585,6 +588,7 @@ export function getCurrentWeekTimePosition(dates: string[], now: Date, timeZone 
 
 export function mergeCalendarItem(items: CalendarItem[], updated: CalendarItem): CalendarItem[] {
   const map = new Map(items.map((item) => [item.key, item]));
+  if (updated.source === "calendar_event" && updated.recruitingCycleId) map.delete(`crm_interview:${updated.recruitingCycleId}`);
   map.set(updated.key, updated);
   return sortCalendarItems([...map.values()]);
 }

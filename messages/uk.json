@@ -11,6 +11,8 @@
     "sortedDescending": "За спаданням"
   },
   "Crm": {
+    "title": "CRM",
+    "sectionHelp": "Про розділ «{section}»",
     "sectionNavigation": "Розділи CRM",
     "search": "Пошук",
     "statusFilter": "Фільтр за статусом",
@@ -1679,6 +1681,11 @@
     "assignToMe": "Призначити мене",
     "interviewer": "Проводить",
     "selectInterviewer": "Оберіть того, хто проводить",
+    "candidate": "Кандидат",
+    "noCandidate": "Без кандидата",
+    "openCandidate": "Відкрити кандидата",
+    "invalidCandidate": "Кандидат недоступний або вже має заплановану співбесіду в цьому циклі найму.",
+    "candidateInterviewEvent": "Співбесіда · {name}",
     "selectProjectFirst": "Спочатку оберіть проєкт",
     "invalidAssignee": "Оберіть відповідального.",
     "selectParticipants": "Оберіть учасників",

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getLocale } from "next-intl/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     p_all_day: payload.all_day,
     p_attendee_ids: value.attendeeIds,
     p_participant_ids: value.participantIds,
+    ...(value.recruitingCycleId ? { p_recruiting_cycle_id: value.recruitingCycleId } : {}),
     ...(payload.project_id === null ? {} : { p_project_id: payload.project_id }),
     ...(payload.description === null ? {} : { p_description: payload.description }),
     ...(payload.location === null ? {} : { p_location: payload.location }),
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(error) }, { status: 400 });
   }
 
+  revalidatePath("/crm/candidates");
   scheduleGoogleCalendarReconciliation();
   const item = await getNormalizedCalendarEvent(eventId);
   return item ? NextResponse.json({ success: true, item }, { status: 201 }) : NextResponse.json({ success: false, formError: "The event was created but could not be reloaded." }, { status: 500 });

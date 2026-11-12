@@ -7,6 +7,7 @@ import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getCrmCandidateCycles, getCrmLeadHistory, type CrmLeadHistory } from "@/data/queries/crm";
 import { parseCrmBudgetInput } from "@/lib/crm-budget";
 import { resolveCrmFollowUpAt } from "@/lib/crm";
+import { scheduleGoogleCalendarReconciliation } from "@/lib/google-calendar/queue";
 import { zonedWallTimeToIso } from "@/lib/calendar";
 import { normalizePhoneForCountry } from "@/lib/ukrainian-phone";
 import { createClient } from "@/lib/supabase/server";
@@ -236,6 +237,7 @@ export async function createCandidate(_state: CrmActionState, formData: FormData
     return { error: t("errors.saveCandidate") };
   }
   revalidatePath("/crm/candidates");
+  revalidatePath("/calendar");
   return { success: true };
 }
 
@@ -267,6 +269,8 @@ export async function saveCandidateEditor(candidateId: string, cycleId: string, 
     return { error: t("errors.saveCandidate") };
   }
   revalidatePath("/crm/candidates");
+  revalidatePath("/calendar");
+  scheduleGoogleCalendarReconciliation();
   return { success: true };
 }
 
@@ -283,6 +287,7 @@ export async function startRecruitingCycle(candidateId: string, _state: CrmActio
     return { error: error.message.includes("active_recruiting_cycle_exists") ? t("errors.activeCycle") : t("errors.saveCycle") };
   }
   revalidatePath("/crm/candidates");
+  revalidatePath("/calendar");
   return { success: true };
 }
 
@@ -296,6 +301,8 @@ export async function deleteCandidate(candidateId: string): Promise<{ error?: st
     return { error: t("errors.deleteCandidate") };
   }
   revalidatePath("/crm/candidates");
+  revalidatePath("/calendar");
+  scheduleGoogleCalendarReconciliation();
   return {};
 }
 

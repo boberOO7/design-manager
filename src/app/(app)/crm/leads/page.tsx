@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { LeadsWorkspace } from "@/components/crm/leads-workspace";
-import { InstaLoadReady } from "@/components/shared/instaload-motion";
-import { PageHeader } from "@/components/shared/page-header";
+import { CrmShell } from "@/components/crm/crm-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCrmAdmins, getCrmLeads } from "@/data/queries/crm";
 import { getActiveStudioAssignees } from "@/data/queries/project-members";
@@ -23,5 +22,5 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pro
   void projectOptions.catch(() => {});
   const [[result, admins], params, t] = await Promise.all([pending, searchParams, getTranslations("Crm")]);
   const initialLeadId = typeof params.lead === "string" ? params.lead : undefined;
-  return <div className="space-y-6"><PageHeader title={t("leads.title")} description={t("leads.description")} /><InstaLoadReady name="crm-leads" className="instaload-panel [--instaload-reveal-duration:200ms]">{result.error ? <EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /> : <LeadsWorkspace leads={result.leads} admins={admins} currentUserId={result.currentUserId} defaultStartDate={getKyivDateOnly()} initialAttentionOnly={params.attention === "1"} initialLeadId={initialLeadId} projectOptions={projectOptions} />}</InstaLoadReady></div>;
+  return result.error ? <CrmShell><EmptyState title={t("errors.loadTitle")} description={t("errors.loadDescription")} /></CrmShell> : <LeadsWorkspace leads={result.leads} admins={admins} currentUserId={result.currentUserId} defaultStartDate={getKyivDateOnly()} initialAttentionOnly={params.attention === "1"} initialLeadId={initialLeadId} projectOptions={projectOptions} />;
 }

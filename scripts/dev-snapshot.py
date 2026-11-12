@@ -267,6 +267,9 @@ def sanitize(raw, target, schema):
                     cleaned.append(raw_value)
                 elif table == "profiles" and field == "avatar_url":
                     cleaned.append(r"\N")
+                elif table == "project_feedback" and field == "token":
+                    # Keep required link tokens valid without retaining production capabilities.
+                    cleaned.append(secrets.token_hex(32))
                 elif SECRET_FIELD.search(field):
                     cleaned.append(r"\N")
                 elif kind in ("json", "jsonb"):
@@ -443,6 +446,8 @@ def self_test():
         ("finance_accounts", {"id": studio_id, "name": "Operating account", "opening_balance": "12500.00"}),
         ("crm_candidates", {"id": studio_id, "full_name": "Nadia Applicant", "email": "nadia@example.com", "phone": "+380501234567"}),
         ("calendar_events", {"id": studio_id, "meeting_url": "https://meet.example.com/design-review"}),
+        ("project_feedback", {"id": studio_id, "project_id": studio_id, "token": "a" * 64, "revoked_at": None}),
+        ("project_feedback", {"id": other_id, "project_id": studio_id, "token": "b" * 64, "revoked_at": "2026-11-06 12:37:51+00"}),
         ("notifications", {"id": studio_id, "metadata": json.dumps({"leadName": "Family K", "contactEmail": "client@example.com", "access_token": "ya29." + "a" * 24})}),
     ]
     schema = {(table, field): "jsonb" if field == "metadata" else "text" for table, row in rows for field in row}
@@ -459,9 +464,20 @@ def self_test():
             if is_row:
                 preserved.setdefault(table, []).append(dict(zip(fields, (unescape(value) for value in line.rstrip("\n").split("\t")))))
         for table, row in rows:
-            if table in ("notifications", "profiles"):
+            if table in ("notifications", "profiles", "project_feedback"):
                 continue
             assert row in preserved[table], f"Ordinary {table} data changed"
+        feedback_rows = preserved["project_feedback"]
+        local_tokens = [row["token"] for row in feedback_rows]
+        production_tokens = {row["token"] for table, row in rows if table == "project_feedback"}
+        assert all(token is not None and re.fullmatch(r"[a-f0-9]{64}", token) for token in local_tokens)
+        assert len(set(local_tokens)) == len(feedback_rows)
+        assert not production_tokens.intersection(local_tokens)
+        assert all(token not in safe.read_text() for token in production_tokens)
+        assert [{key: value for key, value in row.items() if key != "token"} for row in feedback_rows] == [
+            {key: value for key, value in row.items() if key != "token"}
+            for table, row in rows if table == "project_feedback"
+        ]
         assert all(row["avatar_url"] is None for row in preserved["profiles"])
         assert [row["id"] for row in preserved["profiles"]] == [admin_id, member_id, other_id]
         metadata = json.loads(preserved["notifications"][0]["metadata"])

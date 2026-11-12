@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getLocale } from "next-intl/server";
 import { getActiveStudioMembership } from "@/data/queries/active-studio-membership";
@@ -41,6 +42,7 @@ export async function PATCH(request: Request, context: Context) {
     if (!data) return NextResponse.json({ success: false, formError: "The event changed. Reload it before trying again." }, { status: 409 });
     // DB guards, notifications and the Google outbox run in this UPDATE's transaction.
     // No invitation/participant writes or fallible reload after committing the time change.
+    revalidatePath("/crm/candidates");
     scheduleGoogleCalendarReconciliation();
     return NextResponse.json({ success: true, item: { ...item, startsAt: data.starts_at, endsAt: data.ends_at, startDate: instantToDateOnly(data.starts_at), endDate: instantToDateOnly(data.ends_at) } });
   }
@@ -76,18 +78,19 @@ export async function PATCH(request: Request, context: Context) {
     if (value.eventType === "business_trip") value = { ...value, title: getBusinessTripTitle(project.name, await getLocale()) };
   }
   if (value.scope === "this" && value.occurrenceStart && existingEvent.recurrence_rule) {
-    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
+    const { data: override, error: overrideError } = await supabase.from("calendar_events").insert({ studio_id: membership.studio_id, project_id: value.projectId, title: value.title, description: value.description, event_type: value.eventType, starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay, location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId, recruiting_cycle_id: value.eventType === "interview" ? value.recruitingCycleId : null, created_by: membership.authenticatedUserId, organizer_id: existingEvent.organizer_id, series_id: eventId, occurrence_start: value.occurrenceStart }).select("id").single();
     if (overrideError || !override) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(overrideError) }, { status: 400 });
     if (value.eventType === "business_trip" || value.eventType === "site_visit") {
       const { error: participantError } = await supabase.rpc("replace_business_trip_participants", { p_event_id: override.id, p_user_ids: value.participantIds });
       if (participantError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantError) }, { status: 400 });
     }
+    if (value.recruitingCycleId) revalidatePath("/crm/candidates");
     scheduleGoogleCalendarReconciliation();
     const item = await getNormalizedCalendarEvent(override.id);
     return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
   }
   const { data, error } = await supabase.from("calendar_events").update({
-    title: value.title, event_type: value.eventType, project_id: value.projectId,
+    title: value.title, event_type: value.eventType, project_id: value.projectId, recruiting_cycle_id: value.eventType === "interview" ? value.recruitingCycleId : null,
     starts_at: value.startsAt, ends_at: value.endsAt, all_day: value.allDay,
     location: value.location, meeting_url: value.meetingUrl, meeting_mode: value.meetingMode, description: value.description, recurrence_rule: value.recurrenceRule, compensates_time_off_request_id: value.compensatesTimeOffRequestId, assignee_id: value.assigneeId,
   }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
@@ -118,6 +121,7 @@ export async function PATCH(request: Request, context: Context) {
     if (participantClearError) return NextResponse.json({ success: false, ...getCalendarEventPersistenceError(participantClearError) }, { status: 400 });
   }
 
+  revalidatePath("/crm/candidates");
   scheduleGoogleCalendarReconciliation();
   const item = await getNormalizedCalendarEvent(eventId);
   return item ? NextResponse.json({ success: true, item }) : NextResponse.json({ success: false, formError: "The event could not be reloaded." }, { status: 500 });
@@ -139,6 +143,7 @@ export async function DELETE(_request: Request, context: Context) {
   }
   const { data, error } = await supabase.from("calendar_events").update({ cancelled_at: new Date().toISOString() }).eq("id", eventId).eq("studio_id", membership.studio_id).is("cancelled_at", null).select("id").maybeSingle();
   if (error || !data) return NextResponse.json({ success: false, formError: "The event was not found or could not be cancelled." }, { status: 400 });
+  revalidatePath("/crm/candidates");
   scheduleGoogleCalendarReconciliation();
   return NextResponse.json({ success: true, key: `calendar_event:${eventId}` });
 }

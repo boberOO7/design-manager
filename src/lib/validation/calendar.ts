@@ -29,6 +29,7 @@ export const calendarEventSchema = z.object({
   description: optionalText(5000),
   recurrenceRule,
   compensatesTimeOffRequestId: z.string().uuid().nullable().optional().default(null),
+  recruitingCycleId: z.string().uuid().nullable().optional(),
   assigneeId: z.string().uuid().nullable().optional().default(null),
   occurrenceStart: z.iso.datetime({ offset: true }).optional(),
   scope: z.enum(["this", "series"]).optional(),
@@ -41,6 +42,9 @@ export const calendarEventSchema = z.object({
   }
   if (value.compensatesTimeOffRequestId && value.recurrenceRule) {
     context.addIssue({ code: "custom", path: ["compensatesTimeOffRequestId"], message: "A linked work makeup event cannot repeat." });
+  }
+  if (value.recruitingCycleId && value.eventType !== "interview") {
+    context.addIssue({ code: "custom", path: ["recruitingCycleId"], message: "Only interviews can link to a candidate." });
   }
   if (value.eventType === "site_visit") {
     if (!value.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "Choose a project for the site visit." });
@@ -140,6 +144,9 @@ export function getCalendarEventPersistenceError(error: { code?: string; message
   }
   if (message.includes("Business trip participant") || message.includes("Business trips require at least one participant") || message.includes("Calendar event participant") || message.includes("Calendar events require at least one participant")) {
     return { formError: "Choose at least one active project member.", fieldErrors: { participantIds: "Choose active project members." } };
+  }
+  if (message.includes("interview_candidate") || message.includes("calendar_events_one_live_candidate_interview_idx") || message.includes("calendar_events_recruiting_cycle")) {
+    return { formError: "The candidate is unavailable or already has a scheduled interview.", fieldErrors: { recruitingCycleId: "Choose an available candidate." } };
   }
   if (message.includes("Interview interviewer") || message.includes("Interviews require one interviewer")) {
     return { formError: "Choose an active studio administrator to conduct the interview.", fieldErrors: { assigneeId: "Choose an active studio administrator." } };

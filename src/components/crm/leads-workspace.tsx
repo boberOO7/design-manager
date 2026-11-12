@@ -3,12 +3,15 @@
 import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarCheck2, CalendarDays, CircleCheck, CircleDashed, CircleDot, CircleSlash, FileText, FolderKanban, History, LoaderCircle, Mail, MapPin, Megaphone, MessagesSquare, MoreHorizontal, Pencil, Phone, Plus, Ruler, Search, Shapes, StickyNote, Trash2, UserRound, XCircle, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeft, Banknote, Building2, CalendarCheck2, CalendarDays, CircleDot, FileText, FolderKanban, History, LoaderCircle, Mail, MapPin, Megaphone, MoreHorizontal, Pencil, Phone, Plus, Ruler, Shapes, StickyNote, Trash2, UserRound, XCircle, type LucideIcon } from "lucide-react";
 import { Suspense, use, useCallback, useMemo, useState, useTransition, type ComponentProps, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { deleteLead, loadLeadHistory, saveLead, updateLeadFollowUp, updateLeadStatus } from "@/app/(app)/crm/actions";
 import { createProjectFromLead } from "@/app/(app)/projects/new/actions";
+import { CrmAddButton, CrmTableHead, LeadStatusLabel, LeadsToolbar } from "@/components/crm/crm-list-presentation";
+import motion from "@/components/crm/crm-list-motion.module.css";
+import { CrmShell } from "@/components/crm/crm-shell";
 import { CrmActionForm } from "@/components/crm/action-form";
 import { AdminField, NotesField, TextField } from "@/components/crm/crm-fields";
 import { CityCombobox } from "@/components/projects/city-combobox";
@@ -35,7 +38,6 @@ import { CRM_BUDGET_CURRENCIES, formatCrmBudget, getCrmBudgetInputValue, isCrmBu
 import { filterCrmLeadsNeedingAttention, filterLeads, getCrmFollowUpFormValues, getCrmFollowUpQuickChoice, isCrmFollowUpOverdue, type CrmFollowUpQuickChoice } from "@/lib/crm";
 import { formatCalendarDateTime } from "@/lib/calendar";
 import { getCountryName, isCountryCode } from "@/lib/countries";
-import { getCrmLeadStatusBadgeStyle } from "@/lib/semantic-styles";
 import { CRM_LEAD_INVALID_REASONS, CRM_LEAD_SOURCE_KEYS, CRM_LEAD_STATUSES, getCrmLeadSourceFormValues, isCrmLeadInvalidReason, isCrmLeadSourceKey, isCrmLeadStatus, type CrmActionState } from "@/lib/validation/crm";
 import { getProjectTypeDisplayName } from "@/lib/validation/project";
 import type { ProjectTemplate } from "@/lib/project-templates";
@@ -135,18 +137,12 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
     setOpenLead(null);
   }
 
-  return <>
-    <div data-instaload-arrival="leads-list" className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
-      <div className="flex flex-col gap-3 border-b border-[var(--ui-border)] p-4 md:flex-row md:flex-wrap md:items-center">
-        <label className="relative w-full min-w-0 md:w-96"><span className="sr-only">{t("search")}</span><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ui-text-muted)]" aria-hidden="true" /><Input className="h-10 pl-9" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("leads.searchPlaceholder")} /></label>
-        <Button type="button" variant="ghost" aria-pressed={attentionOnly} disabled={attentionLeads.length === 0} onClick={() => setAttentionOnly((current) => !current)} className={cn("gap-2", attentionOnly && "bg-[var(--ui-danger-surface)] text-[var(--ui-danger-text)] hover:bg-[var(--ui-danger-surface)]")}><AlertCircle className="size-4" aria-hidden="true" />{t("filters.needsAttention", { count: attentionLeads.length })}</Button>
-        <Select aria-label={t("statusFilter")} value={status} onValueChange={setStatus} className="md:w-60"><SelectItem value="all">{t("filters.all")}</SelectItem>{CRM_LEAD_STATUSES.map((value) => <SelectItem key={value} value={value} textValue={t(`leadStatus.${value}`)}><LeadStatusLabel status={value} label={t(`leadStatus.${value}`)} /></SelectItem>)}</Select>
-        <Button asChild variant="ghost" className="gap-2 text-[var(--ui-info-text)] md:ml-auto"><Link href="/crm/leads/meta"><Megaphone className="size-4" aria-hidden="true" />{t("meta.title")}</Link></Button>
-        <Button type="button" className={`${actionFeedback.primary} gap-2`} onClick={openCreate}><Plus className="size-4" aria-hidden="true" />{t("leads.add")}</Button>
-      </div>
+  return <CrmShell action={<CrmAddButton section="leads" onClick={openCreate} />}>
+    <div className="rounded-[var(--ui-radius-panel)] border border-[var(--ui-border)] bg-[var(--ui-surface)]">
+      <LeadsToolbar query={query} onQueryChange={setQuery} status={status} onStatusChange={setStatus} attentionOnly={attentionOnly} attentionCount={attentionLeads.length} onAttentionChange={() => setAttentionOnly((current) => !current)} />
       {visible.length ? <div><table role="table" aria-label={t("leads.title")} className="block w-full text-left text-sm lg:table lg:table-fixed">
-        <thead role="rowgroup" className="sr-only border-b border-[var(--ui-border)] text-xs text-[var(--ui-text-muted)] lg:not-sr-only lg:table-header-group"><tr role="row"><th scope="col" className="px-4 py-3 font-medium lg:w-[24%]">{t("leads.columns.contact")}</th><th scope="col" className="px-4 py-3 font-medium">{t("leads.columns.request")}</th><th scope="col" className="px-4 py-3 font-medium lg:w-[21%]">{t("leads.columns.status")} / {t("leads.columns.responsible")}</th><th scope="col" className="px-4 py-3 font-medium lg:w-[26%]">{t("leads.columns.followUp")}</th><th scope="col" className="px-4 py-3 text-right lg:w-16 xl:w-48"><span className="sr-only">{t("recordActions")}</span></th></tr></thead>
-        <tbody role="rowgroup" className="block divide-y divide-[var(--ui-border)] lg:table-row-group">{visible.map((item) => <tr
+        <CrmTableHead section="leads" />
+        <tbody role="rowgroup" className={`${motion.rows} block divide-y divide-[var(--ui-border)] lg:table-row-group`}>{visible.map((item) => <tr
           role="row"
           key={item.id}
           onClick={(event) => { if (!isNestedInteractiveTarget(event.target, event.currentTarget)) openRecord(item); }}
@@ -177,7 +173,7 @@ export function LeadsWorkspace({ admins, currentUserId, defaultStartDate, initia
     </Dialog>
     {proposalLead ? <ProposalEditor leadId={proposalLead.id} orderName={proposalLead.client_name} onClose={() => setProposalLead(null)} /> : null}
     {lead && followUpMode ? <LeadFollowUpDialog defaultStartDate={defaultStartDate} lead={lead} mode={followUpMode} onClose={() => setFollowUpMode(null)} onSave={(followUp) => changeFollowUp("schedule", followUp)} /> : null}
-  </>;
+  </CrmShell>;
 }
 
 function LeadConversionForm({ projectOptions, ...props }: { projectOptions: ComponentProps<typeof LeadsWorkspace>["projectOptions"] } & Omit<ComponentProps<typeof ProjectForm>, "members" | "templates">) {
@@ -360,22 +356,6 @@ function FollowUpTime({ compact = false, locale, value }: { compact?: boolean; l
   if (!value) return <span className="text-sm text-[var(--ui-text-muted)]">—</span>;
   const overdue = isCrmFollowUpOverdue(value);
   return <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums", compact ? "text-xs" : "text-sm font-medium", overdue ? "text-[var(--ui-danger-text)]" : "text-[var(--ui-text-secondary)]")}>{overdue ? <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" /> : null}<time dateTime={value}>{formatCalendarDateTime(value, locale)}</time>{overdue ? <span className={compact ? "text-xs" : "text-xs font-semibold uppercase"}>{t("followUp.overdue")}</span> : null}</span>;
-}
-
-const leadStatusIcons: Record<CrmLead["status"], LucideIcon> = {
-  new: CircleDashed,
-  contacted: CircleDot,
-  discussion: MessagesSquare,
-  proposal: FileText,
-  won: CircleCheck,
-  lost: XCircle,
-  invalid: CircleSlash,
-};
-
-function LeadStatusLabel({ label, status }: { label: string; status: CrmLead["status"] }) {
-  const style = getCrmLeadStatusBadgeStyle(status);
-  const Icon = leadStatusIcons[status];
-  return <span className="inline-flex min-w-0 items-center gap-2 text-sm font-medium leading-5 text-[var(--ui-text-secondary)]"><Icon className={cn("size-3.5 shrink-0", style.className, "border-0 bg-transparent")} aria-hidden="true" /><span>{label}</span></span>;
 }
 
 function LeadHistoryPanel({ error, history, locale }: { error: string | null; history: CrmLeadHistory[] | null; locale: string }) {

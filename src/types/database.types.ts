@@ -183,6 +183,7 @@ export type Database = {
           occurrence_start: string | null
           organizer_id: string
           project_id: string | null
+          recruiting_cycle_id: string | null
           recurrence_rule: Json | null
           series_id: string | null
           starts_at: string
@@ -207,6 +208,7 @@ export type Database = {
           occurrence_start?: string | null
           organizer_id: string
           project_id?: string | null
+          recruiting_cycle_id?: string | null
           recurrence_rule?: Json | null
           series_id?: string | null
           starts_at: string
@@ -231,6 +233,7 @@ export type Database = {
           occurrence_start?: string | null
           organizer_id?: string
           project_id?: string | null
+          recruiting_cycle_id?: string | null
           recurrence_rule?: Json | null
           series_id?: string | null
           starts_at?: string
@@ -273,6 +276,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_recruiting_cycle_studio_fkey"
+            columns: ["recruiting_cycle_id", "studio_id"]
+            isOneToOne: false
+            referencedRelation: "crm_recruiting_cycles"
+            referencedColumns: ["id", "studio_id"]
           },
           {
             foreignKeyName: "calendar_events_series_id_fkey"
@@ -11244,6 +11254,7 @@ export type Database = {
           p_meeting_url?: string
           p_participant_ids?: string[]
           p_project_id?: string
+          p_recruiting_cycle_id?: string
           p_recurrence_rule?: Json
           p_starts_at: string
           p_studio_id: string

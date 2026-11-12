@@ -19,6 +19,7 @@ events retain their own canonical sources.
 | Birthday/anniversary | Profile and studio membership dates | Active studio membership rules |
 | Payroll reminder | Finance payroll/bonus expected obligations | Admin-only, amount-free reminder; includes own configured pay |
 | Studio day off | `studio_days_off` | Active studio members |
+| Candidate interview reminder | `crm_recruiting_cycles.interview_at` without a live linked event | Administrator-only; “mine” uses responsible administrator |
 | CRM Lead follow-up | `crm_leads.next_contact_at` | Administrator-only; “mine” uses responsible administrator |
 
 Salary reminders project created Finance obligations through `finance_payroll_calendar`;
@@ -107,6 +108,15 @@ Invariants:
   count. Later acceptance includes past event dates. Legacy meeting/presentation
   owners receive pending invitations without migration-time notifications.
   Site-visit/trip assignments and interview assignees retain their non-RSVP roles.
+- Interviews can link to one same-studio recruiting cycle through
+  `calendar_events.recruiting_cycle_id`; one live event represents its interview
+  date. Calendar changes atomically update `interview_at`; CRM date changes move
+  the linked event while preserving its duration. Removing the date or cancelling
+  the event clears the other surface. Deleting a cycle cascades its linked events.
+  Dates entered in CRM before a Calendar event is linked appear as start-only
+  reminders, without a fabricated interviewer or duration, and are suppressed
+  once the real event exists. CRM stage, outcome and responsible administrator
+  remain independent of the Calendar interviewer.
 - Recurrence preserves a root series and occurrence identity; update/cancel
   behavior must keep Google mappings and reconciliation rooted consistently.
 

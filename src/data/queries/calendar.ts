@@ -47,7 +47,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
 
   const eventsPromise = supabase
     .from("calendar_events")
-    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, meeting_mode, organizer_id, assignee_id, recurrence_rule, series_id, occurrence_start, cancelled_at, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url)), participants:calendar_event_participants(user_id, profile:profiles!calendar_event_participants_user_id_fkey(id, full_name, job_title, avatar_url))")
+    .select("id, project_id, title, description, event_type, starts_at, ends_at, all_day, location, meeting_url, meeting_mode, organizer_id, assignee_id, recruiting_cycle_id, cycle:crm_recruiting_cycles!calendar_events_recruiting_cycle_studio_fkey(candidate_id), recurrence_rule, series_id, occurrence_start, cancelled_at, compensates_time_off_request_id, project:projects!calendar_events_project_id_fkey(id, name), organizer:profiles!calendar_events_organizer_id_fkey(id, full_name, job_title, avatar_url), assignee:profiles!calendar_events_assignee_id_fkey(id, full_name, job_title, avatar_url), invitees:calendar_event_invites(id, user_id, status, profile:profiles!calendar_event_invites_user_id_fkey(id, full_name, job_title, avatar_url)), participants:calendar_event_participants(user_id, profile:profiles!calendar_event_participants_user_id_fkey(id, full_name, job_title, avatar_url))")
     .eq("studio_id", membership.studio_id)
     .or(`and(series_id.is.null,cancelled_at.is.null,recurrence_rule.not.is.null),and(series_id.is.null,cancelled_at.is.null,recurrence_rule.is.null,starts_at.lt.${rangeEndExclusive},ends_at.gt.${rangeStartInstant}),and(series_id.not.is.null,occurrence_start.gte.${rangeStartInstant},occurrence_start.lt.${rangeEndExclusive})`)
     .order("starts_at");
@@ -62,6 +62,14 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
       .gte("next_contact_at", rangeStartInstant)
       .lt("next_contact_at", rangeEndExclusive)
       .order("next_contact_at")
+    : Promise.resolve({ data: [], error: null });
+
+  const candidateInterviewsPromise = isAdmin
+    ? supabase.from("crm_recruiting_cycles")
+      .select("id, interview_at, outcome, candidate:crm_candidates!inner(id, full_name, responsible_admin_id), events:calendar_events!calendar_events_recruiting_cycle_studio_fkey(id, cancelled_at)")
+      .eq("studio_id", membership.studio_id)
+      .or(`outcome.is.null,and(interview_at.gte.${rangeStartInstant},interview_at.lt.${rangeEndExclusive})`)
+      .order("started_at", { ascending: false })
     : Promise.resolve({ data: [], error: null });
 
   const timeOffPromise = supabase
@@ -128,7 +136,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
     };
   });
   const data = (async () => {
-    const [projectDeadlinesResult, taskDeadlinesResult, eventsResult, leadFollowUpsResult, timeOffResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult, payrollResult] = await Promise.all([
+    const [projectDeadlinesResult, taskDeadlinesResult, eventsResult, leadFollowUpsResult, timeOffResult, systemMembersResult, studioDaysOffResult, coworkerResult, ownApprovedDayOffsResult, calendarPreferenceResult, payrollResult, candidateInterviewsResult] = await Promise.all([
       projectDeadlinesPromise,
       taskDeadlinesPromise,
       eventsPromise,
@@ -140,9 +148,10 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
       ownApprovedDayOffsPromise,
       calendarPreferencePromise,
       payrollPromise,
+      candidateInterviewsPromise,
     ]);
 
-    const errors = [projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, leadFollowUpsResult.error, timeOffResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error, payrollResult.error].filter(Boolean);
+    const errors = [candidateInterviewsResult.error, projectDeadlinesResult.error, taskDeadlinesResult.error, eventsResult.error, leadFollowUpsResult.error, timeOffResult.error, systemMembersResult.error, studioDaysOffResult.error, coworkerResult.error, ownApprovedDayOffsResult.error, calendarPreferenceResult.error, payrollResult.error].filter(Boolean);
     if (errors.length > 0) {
       console.error("Unable to load Calendar data", errors);
       throw new Error("Unable to load Calendar data.");
@@ -215,6 +224,19 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
       });
     }
 
+    for (const cycle of candidateInterviewsResult.data ?? []) {
+      if (!cycle.interview_at || Date.parse(cycle.interview_at) < Date.parse(rangeStartInstant) || Date.parse(cycle.interview_at) >= Date.parse(rangeEndExclusive)
+        || cycle.events.some((event) => !event.cancelled_at)) continue;
+      items.push({
+        source: "crm_interview", key: `crm_interview:${cycle.id}`, id: cycle.id,
+        title: cycle.candidate.full_name, candidateId: cycle.candidate.id,
+        startDate: instantToDateOnly(cycle.interview_at), endDate: instantToDateOnly(cycle.interview_at), allDay: false,
+        startsAt: cycle.interview_at, endsAt: cycle.interview_at,
+        projectId: null, personIds: cycle.candidate.responsible_admin_id ? [cycle.candidate.responsible_admin_id] : [],
+        responsibleAdminId: cycle.candidate.responsible_admin_id,
+      });
+    }
+
     const events = eventsResult.data ?? [];
     const overrides = new Map(events.filter((event) => event.series_id && event.occurrence_start).map((event) => [`${event.series_id}:${event.occurrence_start}`, event]));
     for (const event of events) {
@@ -226,7 +248,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
         source: "calendar_event", key: `calendar_event:${event.id}`, id: event.id,
         title: event.title, startDate: instantToDateOnly(event.starts_at), endDate: event.all_day ? getInclusiveAllDayEndDate(event.ends_at) : instantToDateOnly(event.ends_at),
         allDay: event.all_day, projectId: event.project_id, personIds: [...new Set(personIds)],
-        eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
+        recruitingCycleId: event.recruiting_cycle_id, candidateId: event.cycle?.candidate_id ?? null, eventType: event.event_type, startsAt: event.starts_at, endsAt: event.ends_at,
         description: event.description, location: event.location, meetingUrl: event.meeting_url, meetingMode: normalizeMeetingMode(event.meeting_mode),
         recurrenceRule: parseRecurrenceRule(event.recurrence_rule), seriesId: null, occurrenceStart: null,
         compensatesTimeOffRequestId: event.compensates_time_off_request_id, compensationDayOff: event.compensates_time_off_request_id ? linkedDayOffById.get(event.compensates_time_off_request_id) ?? null : null,
@@ -242,7 +264,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
         if (override) {
           const overrideInvitees = override.invitees.map((invite) => ({ ...invite.profile, projectIds: [], inviteId: invite.id, status: invite.status }));
           const overrideParticipants = override.participants.map((participant) => ({ ...participant.profile, projectIds: [] }));
-          items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, meetingMode: normalizeMeetingMode(override.meeting_mode), recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, assigneeId: override.assignee_id, assignee: override.assignee ? { ...override.assignee, projectIds: [] } : null, invitees: overrideInvitees, participants: overrideParticipants, personIds: [...new Set([...overrideInvitees.map((invitee) => invitee.id), ...overrideParticipants.map((participant) => participant.id), override.organizer_id, ...(override.assignee_id ? [override.assignee_id] : [])])] });
+          items.push({ ...baseItem, key: `calendar_event:${override.id}`, id: override.id, title: override.title, recruitingCycleId: override.recruiting_cycle_id, candidateId: override.cycle?.candidate_id ?? null, startsAt: override.starts_at, endsAt: override.ends_at, startDate: instantToDateOnly(override.starts_at), endDate: override.all_day ? getInclusiveAllDayEndDate(override.ends_at) : instantToDateOnly(override.ends_at), allDay: override.all_day, description: override.description, location: override.location, meetingUrl: override.meeting_url, meetingMode: normalizeMeetingMode(override.meeting_mode), recurrenceRule: null, seriesId: event.id, occurrenceStart: originalStart, compensatesTimeOffRequestId: override.compensates_time_off_request_id, compensationDayOff: override.compensates_time_off_request_id ? linkedDayOffById.get(override.compensates_time_off_request_id) ?? null : null, assigneeId: override.assignee_id, assignee: override.assignee ? { ...override.assignee, projectIds: [] } : null, invitees: overrideInvitees, participants: overrideParticipants, personIds: [...new Set([...overrideInvitees.map((invitee) => invitee.id), ...overrideParticipants.map((participant) => participant.id), override.organizer_id, ...(override.assignee_id ? [override.assignee_id] : [])])] });
         } else items.push({ ...baseItem, key: `calendar_event:${event.id}:${originalStart}`, id: event.id, startsAt: bounds.startsAt, endsAt: bounds.endsAt, startDate: instantToDateOnly(bounds.startsAt), endDate: event.all_day ? getInclusiveAllDayEndDate(bounds.endsAt) : instantToDateOnly(bounds.endsAt), seriesId: event.id, occurrenceStart: originalStart });
       }
     }
@@ -275,6 +297,7 @@ export async function getCalendarStreams({ start, end }: CalendarQueryInput): Pr
       rangeStart: start, rangeEnd: end,
       today: instantToDateOnly(new Date().toISOString()),
       compensableDayOffs,
+      interviewCandidates: (candidateInterviewsResult.data ?? []).filter((cycle) => !cycle.outcome).map((cycle) => ({ id: cycle.id, eventId: cycle.events.find((event) => !event.cancelled_at)?.id ?? null, candidate: { id: cycle.candidate.id, full_name: cycle.candidate.full_name } })),
       timeFormat: normalizeCalendarTimeFormat(calendarPreferenceResult.data.user?.user_metadata.calendar_time_format),
       timeZone: normalizeCalendarTimeZone(calendarPreferenceResult.data.user?.user_metadata.calendar_time_zone),
     };

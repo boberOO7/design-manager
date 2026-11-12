@@ -6,6 +6,7 @@ import uk from "../../../messages/uk.json";
 import { selectMessages } from "../../i18n/message-scopes";
 
 const workspacePath = new URL("./leads-workspace.tsx", import.meta.url);
+const presentationPath = new URL("./crm-list-presentation.tsx", import.meta.url);
 const actionsPath = new URL("../../app/(app)/crm/actions.ts", import.meta.url);
 const metadataControlsPath = new URL("../projects/project-metadata-controls.tsx", import.meta.url);
 const cityComboboxPath = new URL("../projects/city-combobox.tsx", import.meta.url);
@@ -67,7 +68,7 @@ describe("CRM leads workspace contract", () => {
     expect(workspace).toContain('t("status.linkedProjectLocked")');
     expect(en.Crm.status.linkedProjectLocked).toBeTruthy();
     expect(uk.Crm.status.linkedProjectLocked).toBeTruthy();
-    expect(workspace).toContain("getCrmLeadStatusBadgeStyle");
+    expect(await readFile(presentationPath, "utf8")).toContain("getCrmLeadStatusBadgeStyle");
     expect(workspace).toContain("<LeadStatusLabel status={item.status}");
     expect(workspace).toContain("<LeadStatusLabel status={value}");
   });
@@ -111,8 +112,11 @@ describe("CRM leads workspace contract", () => {
     const workspace = await readFile(workspacePath, "utf8");
     expect(workspace).toContain("filterCrmLeadsNeedingAttention(leads, currentUserId)");
     expect(workspace).toContain("attentionOnly ? attentionLeads : leads");
-    expect(workspace).toContain("aria-pressed={attentionOnly}");
-    expect(workspace).toContain('t("filters.needsAttention", { count: attentionLeads.length })');
+    const presentation = await readFile(presentationPath, "utf8");
+    expect(presentation).toContain("aria-pressed={attentionOnly}");
+    expect(presentation).toContain('t("filters.needsAttention", { count: loading ? "—" : attentionCount })');
+    expect(workspace).toContain("attentionCount={attentionLeads.length}");
+    expect(workspace).toContain("onAttentionChange={() => setAttentionOnly((current) => !current)}");
     expect(Object.keys(en.Crm.filters).sort()).toEqual(Object.keys(uk.Crm.filters).sort());
   });
 
@@ -207,7 +211,8 @@ describe("CRM leads workspace contract", () => {
     expect(table).toContain('t("fields.firstContact")');
     expect(table).toContain('dateTime={item.first_contact_date}>{formatDate(item.first_contact_date, locale)}');
     expect(table).toContain('imageUrl={item.responsibleAdmin.avatar_url}');
-    expect(table).toContain('<span className="sr-only">{t("recordActions")}</span>');
+    expect(table).toContain('<CrmTableHead section="leads" />');
+    expect(await readFile(presentationPath, "utf8")).toContain('<span className="sr-only">{t("recordActions")}</span>');
     expect(workspace).toContain('function openConversion(item: CrmLead)');
     expect(workspace).toContain('setView("convert")');
     expect(projectAction).toContain('if (lead.project_id)');

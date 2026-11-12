@@ -232,6 +232,19 @@ describe("Calendar event and time-off payload validation", () => {
     expect(toCalendarEventMutationPayload({ ...baseValues, attendeeIds }).attendeeIds).toEqual(attendeeIds);
   });
 
+  it("links candidates only to interviews and preserves omitted links from older callers", () => {
+    const recruitingCycleId = "123e4567-e89b-12d3-a456-426614174001";
+    const payload = toCalendarEventMutationPayload({ ...baseValues, eventType: "interview", allDay: false, assigneeId: "123e4567-e89b-12d3-a456-426614174002", recruitingCycleId });
+    expect(calendarEventSchema.safeParse(payload).success).toBe(true);
+    expect(payload.recruitingCycleId).toBe(recruitingCycleId);
+    expect(toCalendarEventMutationPayload({ ...baseValues, recruitingCycleId }).recruitingCycleId).toBeNull();
+    expect(calendarEventSchema.safeParse({ ...payload, eventType: "general", assigneeId: null }).success).toBe(false);
+    const { recruitingCycleId: omitted, ...olderPayload } = payload;
+    expect(omitted).toBe(recruitingCycleId);
+    expect(calendarEventSchema.parse(olderPayload).recruitingCycleId).toBeUndefined();
+    expect(calendarEventSchema.parse({ ...payload, recruitingCycleId: null }).recruitingCycleId).toBeNull();
+  });
+
   it("rejects browser-supplied time-off user IDs", () => {
     expect(timeOffRequestSchema.safeParse({ requestType: "vacation", startDate: "2026-07-28", endDate: "2026-07-28", allDay: true, privateNote: "", userId: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
   });

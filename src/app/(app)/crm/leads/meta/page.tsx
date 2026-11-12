@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getActiveStudioAdmin } from "@/data/queries/active-studio-admin";
 import { getMetaLeadTarget } from "@/lib/meta-leads/config";
 import { MetaLeadsWorkspace } from "@/components/crm/meta-leads-workspace";
+import { CrmShell } from "@/components/crm/crm-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 
@@ -24,5 +25,5 @@ export default async function MetaLeadsPage() {
   if (target && target.studioId !== admin.studio_id)
     notFound();
   const t = await getTranslations("Crm.meta");
-  return <div className="space-y-6"><PageHeader title={t("title")} description={t("description")} action={<Button asChild variant="outline"><Link href="/crm/leads">{t("backToCrm")}</Link></Button>}/><MetaLeadsWorkspace /></div>;
+  return <CrmShell><div className="space-y-6"><PageHeader title={t("title")} description={t("description")} action={<Button asChild variant="outline"><Link href="/crm/leads">{t("backToCrm")}</Link></Button>}/><MetaLeadsWorkspace /></div></CrmShell>;
 }

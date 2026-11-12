@@ -22,6 +22,7 @@ export type CalendarEventFormValues = {
   recurrenceRule?: RecurrenceRule | null;
   compensatesTimeOffRequestId?: string;
   assigneeId?: string;
+  recruitingCycleId?: string;
 };
 
 export type CalendarEventFormRange = Pick<CalendarEventFormValues, "startDate" | "endDate" | "startTime" | "endTime">;
@@ -98,6 +99,7 @@ export function createCalendarEventFormValues(
     recurrenceRule: item?.recurrenceRule ?? null,
     compensatesTimeOffRequestId: item?.compensatesTimeOffRequestId ?? "",
     assigneeId: item?.assigneeId ?? "",
+    recruitingCycleId: item?.recruitingCycleId ?? "",
     ...(!item ? initialRange : undefined),
   };
 }
@@ -125,6 +127,7 @@ export function toCalendarEventMutationPayload(values: CalendarEventFormValues, 
     description: values.description,
     recurrenceRule: values.recurrenceRule ? { ...values.recurrenceRule, ...(!values.allDay ? { timeZone } : {}) } : null,
     compensatesTimeOffRequestId: values.compensatesTimeOffRequestId || null,
+    recruitingCycleId: values.eventType === "interview" ? values.recruitingCycleId || null : null,
     assigneeId: values.eventType === "site_visit" ? null : values.assigneeId || null,
   };
 }

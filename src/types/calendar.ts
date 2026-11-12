@@ -62,6 +62,8 @@ export type CalendarItem =
       occurrenceStart?: string | null;
       compensatesTimeOffRequestId?: string | null;
       compensationDayOff?: CalendarCompensableDayOff | null;
+      recruitingCycleId?: string | null;
+      candidateId?: string | null;
       assigneeId?: string | null;
       assignee?: CalendarPerson | null;
       participants: CalendarPerson[];
@@ -85,6 +87,13 @@ export type CalendarItem =
         assigneeId: string;
         assigneeName: string;
       };
+    })
+  | (CalendarBase & {
+      source: "crm_interview";
+      startsAt: string;
+      endsAt: string;
+      candidateId: string;
+      responsibleAdminId: string | null;
     })
   | (CalendarBase & {
       source: "crm_follow_up";
@@ -142,7 +151,13 @@ export type CalendarFilters = {
   mine: boolean;
 };
 
+export type CalendarInterviewCandidate = Pick<Database["public"]["Tables"]["crm_recruiting_cycles"]["Row"], "id"> & {
+  eventId: string | null;
+  candidate: Pick<Database["public"]["Tables"]["crm_candidates"]["Row"], "id" | "full_name">;
+};
+
 export type CalendarPageData = {
+  interviewCandidates?: CalendarInterviewCandidate[];
   items: CalendarItem[];
   projects: CalendarProject[];
   people: CalendarPerson[];

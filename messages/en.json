@@ -11,6 +11,8 @@
     "sortedDescending": "Sorted descending"
   },
   "Crm": {
+    "title": "CRM",
+    "sectionHelp": "About {section}",
     "sectionNavigation": "CRM sections",
     "search": "Search",
     "statusFilter": "Filter by status",
@@ -1679,6 +1681,11 @@
     "assignToMe": "Assign to me",
     "interviewer": "Interviewer",
     "selectInterviewer": "Select an interviewer",
+    "candidate": "Candidate",
+    "noCandidate": "Without a candidate",
+    "openCandidate": "Open candidate",
+    "invalidCandidate": "The candidate is unavailable or already has a scheduled interview in this recruiting cycle.",
+    "candidateInterviewEvent": "Interview · {name}",
     "selectProjectFirst": "Select a project first",
     "invalidAssignee": "Choose an eligible assignee.",
     "selectParticipants": "Select participants",

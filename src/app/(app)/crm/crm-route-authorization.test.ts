@@ -9,6 +9,6 @@ describe("CRM route authorization", () => {
     expect(source).toContain("getActiveStudioMembership()");
     expect(source).toContain('membership.system_role !== "admin"');
     expect(source).toContain('redirect("/dashboard")');
-    expect(source.indexOf('membership.system_role !== "admin"')).toBeLessThan(source.indexOf("<CrmShell>"));
+    expect(source.indexOf('membership.system_role !== "admin"')).toBeLessThan(source.indexOf('<DomainMessages scope="crm">'));
   });
 });

@@ -1,0 +1,17 @@
+/* Reveal database rows only. The panel, controls and headings never move or fade. */
+.rows {
+  animation: reveal-rows 180ms ease-out;
+}
+
+@keyframes reveal-rows {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rows { animation: none; }
+}
+
+:global(:root[data-motion="off"]) .rows {
+  animation: none;
+}
